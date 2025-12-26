@@ -63,15 +63,15 @@ public class ExcelController {
         
 
         // 2. INYECTAR FECHA EN DOM (Usa el método agregarFechaFinal que corregimos antes)
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM HH:mm");
-        String fechaActual = dtf.format(LocalDateTime.now());
+       // DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM HH:mm");
+        //String fechaActual = dtf.format(LocalDateTime.now());
        
 
         // 3. CAPTURAR DATOS NUMÉRICOS (¡NUEVO!)
-        Map<String, String> datosCapturados = capturarDatosGrafica(driver);
+        //Map<String, String> datosCapturados = capturarDatosGrafica(driver);
 
         // 4. GUARDAR EN EXCEL (¡NUEVO!)
-        escribirExcelResultados(codigo_local, fechaActual, datosCapturados);
+        //escribirExcelResultados(codigo_local, fechaActual, datosCapturados);
 	}
 
 }

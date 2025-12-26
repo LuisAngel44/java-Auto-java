@@ -62,26 +62,38 @@ public class WebController {
       return driver;
   }
   
-  public static String ElegirURL(String item, String Mes_Año,String codigo_local,String CID) {
-	  String[] date = Mes_Año.split(",");
-	  if(item.equals(3)||item.equals(1)) {
+  public static void ElegirURL(String fechaINI, String fechafin,String item,String codigo_local,String CID,WebDriver drive) {
+	//   "13/12/2025 00:00"; si es item 2 o item 4 
+	     //  "12/01/2026 23:59";	  
+			  
+		  String fechaInicioPeru = fechaINI+" 00:00";
+		  String fechaFinPeru    = fechafin + " 23:59"; // Puse 2026 como pediste, ajusta si es error.
 		  
+		// 1. Convertir tus fechas simples a formato URL de Grafana
+	        String fromGrafana = convertirFecha(fechaInicioPeru);
+	        String toGrafana   = convertirFecha(fechaFinPeru);
+	        
+	     // Variables de tu código anterior
+	             
+	        String url = "https://181.176.39.44/grafana/d/device-detail/device-detail?" +
+                    "var-codigo_local=" + codigo_local +
+                    "&orgId=6" +
+                    "&from=" + fromGrafana +  // <--- FECHA INICIO CONVERTIDA
+                    "&to=" + toGrafana +      // <--- FECHA FIN CONVERTIDA
+                    "&timezone=browser" +
+                    "&var-exportpdf=&var-check_user=2&var-item=$__all" +
+                    "&var-hostgroup=minedu&var-departamento=$__all" +
+                    "&var-provincia=$__all&var-distrito=$__all" +
+                    "&var-centro_poblado=$__all&var-centro_educativo=$__all" +
+                    "&var-asset_name=$__all&var-hostname_old=&var-hostname=MINEDU5K2_" + CID + "_SRX300" +
+                    "&var-max_bandwidth=30&var-interface=$__all&var-rp=six_months&var-service=$__all" +
+                    "&var-channel=plugin%2Ftestdata%2Frandom-2s-stream&var-pingtrace_session_id=default" +
+                    "&var-render_interface=var-interface%3Dge-0%2F0%2F1%26var-interface%3Dge-0%2F0%2F7" +
+                    "&refresh=10m&viewPanel=panel-145";
+	        
+	        drive.get(url);
+            
 		  
-		    String fechaInicioPeru = "13/12/"+date+" 00:00";
-		      String fechaFinPeru    = "13/12/"+date+" 12:59"; // Puse 2026 como pediste, ajusta si es error.
-		  
-	  }else if(){
-			  }else {System.exit(0);}
-		// Si es otro año, solo cambia el String.
-  
-
-      // 1. Convertir tus fechas simples a formato URL de Grafana
-      String fromGrafana = convertirFecha(fechaInicioPeru);
-      String toGrafana   = convertirFecha(fechaFinPeru);
-
-      // Variables de tu código anterior
-      codigo_local = "TU_CODIGO";
-      CID = "TU_CID";
 	  
   }
   public static String convertirFecha(String fechaTexto) {
@@ -101,34 +113,14 @@ public class WebController {
       return fechaUTC.format(outputFormat);
   }
   
-  public void TomadeCapturaGurardado(,WebDriver driver,String URL) {
-	  fechaMesAño.split(ITEM);
+  
+  public void TomadeCapturaGurardado(WebDriver driver,String URL) {
+	
 
-	  
-	// 1. Definir el formato exacto que pide Grafana
-	  DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.000'Z'");
 
-	  // 2. Obtener la hora actual en UTC (Recomendado para servidores)
-	  ZonedDateTime ahora = ZonedDateTime.now(ZoneId.of("UTC"));
-
-	  // EJEMPLO 1: Rango de las últimas 24 horas exactas
-	  String fechaFin = ahora.format(formatter);
-	  String fechaInicio = ahora.minus(24, ChronoUnit.HOURS).format(formatter);
-
-	  // EJEMPLO 2: Si quieres el "Mes actual" (Desde el día 1 a las 00:00 hasta ahora)
-	  // String fechaFin = ahora.format(formatter);
-	  // String fechaInicio = ahora.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).format(formatter);
-
-	  // 3. Imprimir para verificar (Opcional)
-	  System.out.println("Desde: " + fechaInicio);
-	  System.out.println("Hasta: " + fechaFin); 
-                
              
              
     
-      	
-     } catch (Exception e) {
-         e.printStackTrace();
-     }
+  }
   
 }
