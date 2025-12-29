@@ -23,6 +23,8 @@ import org.apache.poi.ss.usermodel.*;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
 //import io.github.bonigarcia.wdm.WebDriverManager;
 import org.apache.commons.io.FileUtils;
 import java.io.File;
@@ -45,30 +47,26 @@ public class minedu {
 //		
 	
 		Controller controller=new Controller();
-	    int[] columnasDeseadas = {0,1,2,3,4,5,6,7,8,9,10};
+	    int[] columnasDeseadas = {0,1,2};
 	    String RutaExcelFinal = "src/main/resources/";
 	    String ITEM=controller.ElegirITEM();
-	    String NombreExcel="Excel_w_ITEM_"+ITEM+".xlsx";
+	    String NombreExcel="Excel_"+ITEM+".xlsx";
         int n = 0;
         System.out.println(NombreExcel);
+        
 	    //Elegir el nombre del excel por ITEM
 	    
 	    
 	    ///VARIABLE DE LOS ENCABEZADOS DEL EXCEL 
 	    // --- C MO USAR LOS DATOS EN EL BUCLE ---
         //
-        String Numero;
-        //
-        
+        String Numero;    
         String codigo_local;
-        String CID;
-    
-	    
+        String CID;    
         String NomLLEE;
         String Regio;
         String Provincia;
-        String Distrito;
-     
+        String Distrito;     
         String Peak_Receive;
         String Minimum_Receive;
         String Average_Receive;
@@ -79,9 +77,15 @@ public class minedu {
        
         
                
-        
+       //PARA REDUCIR EL MENU
+        boolean menuReducido = false;
 	  //leer excel los pendientes   
+        
+        
+        
         List<List<String>> misDatos = ExcelController.leerColumnasEspecificas(RutaExcelFinal+NombreExcel, columnasDeseadas);
+        
+        
      //escoger el link para las graficas 
        String fechaini=controller.ElegirFechaIni();
        String  fechafin=controller.ElegirFechaFinal();
@@ -91,62 +95,63 @@ public class minedu {
         	WebDriver driver = webController.GraficaAnchoBancha();           
            // -------------------------FOR---------------------------------------
             for (List<String> fila : misDatos) {
-               
+            	 
             	WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
-                codigo_local = fila.get(0);
-                Peak_Receive = fila.get(1);        
-                Minimum_Receive=fila.get(2);
-                Average_Receive=fila.get(3);
-                Peak_Transmit=fila.get(4);
-                Minimum_Transmit=fila.get(5);
-                Average_Transmit=fila.get(6);
-                Ancho_de_banda=fila.get(7);
-                CID=fila.get(8);
-                int intentosOutbound = 0;
+                codigo_local = fila.get(0);             
+                CID=fila.get(1);
+                NomLLEE=fila.get(2);
+             
                 n = n + 1; // Ahora funcionar  sin errores
+                if(codigo_local.matches("[\\d\\.]+")) { 
+                String url=WebController.ElegirURL(fechaini, fechafin,ITEM, codigo_local, CID,driver);
+                Thread.sleep(1000); 
                 
-              
-				WebController.ElegirURL(fechaini, fechafin,ITEM, codigo_local, CID,driver);
-		
+                System.out.println(url);
+   
+		        driver.get(url);
+
+       	        System.out.println("SE VISUALIZA LA FRAFICA .......");
                 
-               Thread.sleep(5000); 
+               Thread.sleep(3000); 
+        //RETRAER EL MENU VERTICAL------------------
                
-                System.out.println("Reduce el menu vertical");
+            // 2. Solo entrará aquí en la primera iteración
+               if (!menuReducido) {
+                   WebController.colapsarMenuGrafana(driver);
+                   menuReducido = true; // Cambiamos a true para que no vuelva a entrar
+               }
+               
+               
+        //----------------------------------------------
                 //marcar y desmarcar 
-                System.out.println("se empieza a ver las graficas ");
-                // 1. Localizar los elementos (ajusta los selectores a tu p gina)
+                      // 1. Localizar los elementos (ajusta los selectores a tu p gina)
                 
           //TOMAR DATOS DE LA GRAFICA PARA EL EXCEL 
-          //-------------------------------------------------------------------
-           
                 
-                // --- ESCENARIO 1: Solo Verde ---
-                // Si la p gina carga con ambos marcados, haz clic en el amarillo para desmarcarlo
-
-                WebElement checkAmarillo = driver.findElement(By.xpath("//*[local-name()='text' and contains(., 'Subida')]"));
-                checkAmarillo.click();
-                Thread.sleep(1000); // Espera breve para que la gr fica reaccione
-               tomarCapturaElemento(driver,"Descarga_"+"CL_"+codigo_local);
-          
-          
-          
-             // --- ESCENARIO 2: Solo Amarillo ---
-             // Marcamos el amarillo y desmarcamos el verde
-            Thread.sleep(5000);
-         //   WebElement check1Amarillo = driver.findElement(By.xpath("//*[local-name()='text' and text()='Sunida']"));
          
-            WebElement checkVerde = driver.findElement(By.xpath("//*[local-name()='text' and contains(., 'Descarga')]"));
-            checkVerde.click();
-            WebElement checkAmarillo1 = driver.findElement(By.xpath("//*[local-name()='text' and contains(., 'Subida')]"));
-            checkAmarillo1.click();
-             Thread.sleep(1000);
-             tomarCapturaElemento(driver, "Salida_"+"CL_"+codigo_local);
-                
-              
-            }
-            
+                // 2. INYECTAR FECHA EN DOM (Usa el método agregarFechaFinal que corregimos antes)
+                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM HH:mm");
+                String fechaActual = dtf.format(LocalDateTime.now());
 
-            
+                // 3. CAPTURAR DATOS NUMÉRICOS (¡NUEVO!)
+                Map<String, String> datosCapturados = WebController.capturarDatosGrafica(driver);
+
+                // 4. GUARDAR EN EXCEL (¡NUEVO!)
+               
+               ExcelController.escribirExcelResultados(ITEM,codigo_local, NomLLEE, CID, RutaExcelFinal+"excel/ITEM"+ITEM+"/Resultados_Grafana_"+ITEM+".xlsx", datosCapturados);
+                
+                
+          //-------------------------------------------------------------------
+           //TOMAR CAPTURA DE LA IMAGENES 
+                
+                WebController.TomadeCapturaGurardado(driver, codigo_local,ITEM); 
+              
+            	  }else {
+            		  
+            		  System.out.println("SE ESTA PRSEANDO EL ENCABEZADO SE PASARA LA SIGUINTE FILA");
+                        
+            	  } 
+          }
             	
         } catch (Exception e) {
             e.printStackTrace();
@@ -155,23 +160,5 @@ public class minedu {
 	}
 	
 	
-	//-------------------------------------------//
-   //metodo para tomar caputura 
-// 1. Agregamos "WebDriver driver" a los par ntesis
-public static void tomarCapturaElemento(WebDriver driver, String NombreImagen) {
-    try {
-        // Ahora el m todo ya reconoce al driver
-        WebElement elementoGrafica = driver.findElement(By.className("css-1xh1fv2-page-panes"));
-
-        File screenshot = elementoGrafica.getScreenshotAs(OutputType.FILE);
-        
-        FileUtils.copyFile(screenshot, new File("src/main/resources/img/" + NombreImagen + ".png"));
-
-        System.out.println("CAPTURA GUARDADA: " + NombreImagen);
-
-    } catch (IOException e) {
-        System.out.println("Error: " + e.getMessage());
-    }
-}	
 	
 }

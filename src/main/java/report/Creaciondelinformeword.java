@@ -5,6 +5,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 
+import controller.Controller;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -14,14 +16,17 @@ import java.util.Iterator;
 
 public class Creaciondelinformeword {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		// TODO Auto-generated method stub
 		// --- CONFIGURACIÓN ---
-        String rutaExcel = "src/main/resources/AnchoBandafinal.xlsx"; 
-        String carpetaImagenes = "src/main/resources/img"; 
-        String rutaSalidaWord = "src/main/resources/Reporte_Final_Consolidado1.docx";
+		Controller controller12=new Controller();
+ 	   String ITEM=controller12.ElegirITEM();
+		
+        String rutaExcel = "src/main/resources/Excel_"+ITEM+".xlsx"; 
+        String carpetaImagenes = "src/main/resources/img/ITEM"+ITEM+"/"; 
+        String rutaSalidaWord = "src/main/resources/word/ITEM"+ITEM+"/Reporte_Final_Consolidado"+ITEM+".docx";
         // ---------------------
-
+        System.out.println("REPORTE GENERADO EN: " +rutaSalidaWord +rutaExcel+carpetaImagenes);
         generarReporteMasivo(rutaExcel, carpetaImagenes, rutaSalidaWord);
     }
 

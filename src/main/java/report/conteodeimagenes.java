@@ -2,18 +2,22 @@ package report;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import controller.WebController;
+import controller.Controller;
 import java.io.File;
 import java.io.FileInputStream;
+
 import java.util.HashSet;
 import java.util.Set;
 
 public class conteodeimagenes {
 
-    public static void main(String[] args) {
-        
+    public static void main(String[] args) throws InterruptedException {
+    	Controller controller12=new Controller();
+    	   String ITEM=controller12.ElegirITEM();
         // --- CONFIGURACIÓN ---
-        String rutaCarpeta = "src/main/resources/img"; // Pon tu ruta aquí
-        String rutaExcel = "src/main/resources/CL.xlsx";  // Pon tu ruta aquí
+        String rutaCarpeta = "src/main/resources/img/ITEM"+ITEM+"/"; // Pon tu ruta aquí
+        String rutaExcel = "src/main/resources/Excel_"+ITEM+".xlsx";  // Pon tu ruta aquí
         int columnaID = 0; // Si los IDs están en la Columna A pon 0, si es B pon 1
         // ---------------------
 

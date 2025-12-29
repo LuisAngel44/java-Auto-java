@@ -1,7 +1,7 @@
 package controller;
 import java.util.Scanner;
 
-public class Controller {
+public  class Controller {
     // 1. Creamos un ÚNICO Scanner para toda la clase
     // Lo ponemos fuera de los métodos para que todos lo compartan
     private Scanner sc = new Scanner(System.in);
@@ -19,7 +19,7 @@ public class Controller {
         // 2. ELIMINADO: sc.close(); <-- Esto causaba el error
         
         if(t.equalsIgnoreCase("y")) {
-            System.out.println("Item elegido: Excel_w_ITEM_" + Item + ".xlsx");
+            System.out.println("Item elegido: Excel_" + Item + ".xlsx");
         } else {
             System.out.println("Saliendo del programa...");
             System.exit(0);
