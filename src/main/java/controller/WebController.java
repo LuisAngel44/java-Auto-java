@@ -174,7 +174,7 @@ public class WebController {
 	}
   
   
-  public static void TomadeCapturaGurardado(WebDriver driver,String codigo_local,String ITEM) {
+  public static void TomadeCapturaGurardado(WebDriver driver,String codigo_local,String ITEM) throws InterruptedException {
       
 
 
@@ -182,10 +182,10 @@ public class WebController {
   try {
 	// --- ESCENARIO 1: Solo Verde ---
       // Si la p gina carga con ambos marcados, haz clic en el amarillo para desmarcarlo
-
+	  Thread.sleep(2000);
       WebElement checkAmarillo = driver.findElement(By.xpath("//*[local-name()='text' and contains(., 'Subida')]"));
       checkAmarillo.click();
-      Thread.sleep(1000); // Espera breve para que la gr fica reaccione
+      Thread.sleep(2000); // Espera breve para que la gr fica reaccione
      tomarCapturaElemento(driver,"Descarga_"+"CL_"+codigo_local,ITEM);
      // --- ESCENARIO 2: Solo Amarillo ---
 
@@ -193,9 +193,10 @@ public class WebController {
 	Thread.sleep(2000);
 	 WebElement checkVerde = driver.findElement(By.xpath("//*[local-name()='text' and contains(., 'Descarga')]"));
 	  checkVerde.click();
+	  Thread.sleep(2000);
 	  WebElement checkAmarillo1 = driver.findElement(By.xpath("//*[local-name()='text' and contains(., 'Subida')]"));
 	  checkAmarillo1.click();
-	   Thread.sleep(1000);
+	  
 	   tomarCapturaElemento(driver, "Salida_"+"CL_"+codigo_local,ITEM); 
 	    
 	
@@ -206,6 +207,12 @@ public class WebController {
 	// TODO Auto-generated catch block
 	e.printStackTrace();
 	  tomarCapturaElemento(driver, "Salida_"+"CL_"+codigo_local,ITEM); 
+	  try {
+		Thread.sleep(2000);
+	} catch (InterruptedException e1) {
+		// TODO Auto-generated catch block
+		e1.printStackTrace();
+	}
 	  tomarCapturaElemento(driver,"Descarga_"+"CL_"+codigo_local,ITEM);
 }
 //   WebElement check1Amarillo = driver.findElement(By.xpath("//*[local-name()='text' and text()='Sunida']"));
@@ -214,10 +221,13 @@ public class WebController {
   }
 
 
-  public static void tomarCapturaElemento(WebDriver driver, String NombreImagen,String ITEM) {
+  public static void tomarCapturaElemento(WebDriver driver, String NombreImagen,String ITEM) throws InterruptedException {
 	    try {
 	        // Ahora el m todo ya reconoce al driver
+	    	Thread.sleep(2000);
+
 	        WebElement elementoGrafica = driver.findElement(By.className("css-1xh1fv2-page-panes"));
+	    	Thread.sleep(2000);
 
 	        File screenshot = elementoGrafica.getScreenshotAs(OutputType.FILE);
 	        

@@ -139,7 +139,7 @@ public class ExcelController {
 	
 	
 
-	public static void escribirExcelResultados(String ITEM,String codigoLocal,String NOMBRELEE ,String CID, String archivoSalida, Map<String, String> datos) {
+	public static void escribirExcelResultados(String departamento,String provincia,String distrito ,String ITEM,String codigoLocal,String NOMBRELEE ,String CID, String archivoSalida, Map<String, String> datos) {
 	    
 	    Workbook workbook;
 	    Sheet sheet;
@@ -156,16 +156,21 @@ public class ExcelController {
 	            workbook = new XSSFWorkbook();
 	            sheet = workbook.createSheet("Datos");
 	            // Crear encabezados si es nuevo
+	            
 	            Row header = sheet.createRow(0);
-	            header.createCell(0).setCellValue("Codigo Local");
-	            header.createCell(1).setCellValue("CID");
-	            header.createCell(2).setCellValue("Nombre de LLEE");	    
-	            header.createCell(3).setCellValue("Descarga Max (Mbps)");
-	            header.createCell(4).setCellValue("Descarga Min (Mbps)");
-	            header.createCell(5).setCellValue("Descarga Avg (Mbps)");
-	            header.createCell(6).setCellValue("Subida Max (Mbps)");
-	            header.createCell(7).setCellValue("Subida Min (Mbps)");
-	            header.createCell(8).setCellValue("Subida Avg (Mbps)");
+	            header.createCell(0).setCellValue("ITEM");
+	            header.createCell(1).setCellValue("Nombre de LLEE");
+	            header.createCell(2).setCellValue("Departamento");
+	            header.createCell(3).setCellValue("Provincia");
+	            header.createCell(4).setCellValue("Distrito");
+	            header.createCell(5).setCellValue("Codigo Local");          	    
+	            header.createCell(6).setCellValue("Descarga Max (Mbps)");
+	            header.createCell(7).setCellValue("Descarga Min (Mbps)");
+	            header.createCell(8).setCellValue("Descarga Avg (Mbps)");
+	            header.createCell(9).setCellValue("Subida Max (Mbps)");
+	            header.createCell(10).setCellValue("Subida Min (Mbps)");
+	            header.createCell(11).setCellValue("Subida Avg (Mbps)");
+	            //header.createCell(12).setCellValue("CID");
 	        }
 
 	     // --- SECCIÓN 2: DETERMINAR LA SIGUIENTE FILA LIBRE ---
@@ -173,16 +178,19 @@ public class ExcelController {
 	        Row row = sheet.createRow(rowCount + 1);
 
 	     // --- SECCIÓN 3: INSERCIÓN DE DATOS ---
-	        row.createCell(0).setCellValue(codigoLocal);
-	        row.createCell(1).setCellValue(CID);
-	        row.createCell(2).setCellValue(NOMBRELEE);	      
-	        row.createCell(3).setCellValue(datos.get("Descarga_Max"));
-	        row.createCell(4).setCellValue(datos.get("Descarga_Min"));
-	        row.createCell(5).setCellValue(datos.get("Descarga_Avg"));
-	        row.createCell(6).setCellValue(datos.get("Subida_Max"));
-	        row.createCell(7).setCellValue(datos.get("Subida_Min"));
-	        row.createCell(8).setCellValue(datos.get("Subida_Avg"));
-	        row.createCell(9).setCellValue(datos.get(ITEM));
+	        row.createCell(0).setCellValue(ITEM);
+	        row.createCell(1).setCellValue(NOMBRELEE);
+	        row.createCell(2).setCellValue(departamento);
+	        row.createCell(3).setCellValue(provincia);
+	        row.createCell(4).setCellValue(distrito);
+	        row.createCell(5).setCellValue(codigoLocal);      
+	        row.createCell(6).setCellValue(datos.get("Descarga_Max"));
+	        row.createCell(7).setCellValue(datos.get("Descarga_Min"));
+	        row.createCell(8).setCellValue(datos.get("Descarga_Avg"));
+	        row.createCell(9).setCellValue(datos.get("Subida_Max"));
+	        row.createCell(10).setCellValue(datos.get("Subida_Min"));
+	        row.createCell(11).setCellValue(datos.get("Subida_Avg"));
+	     //   row.createCell(1).setCellValue(CID);
 
 	     // --- SECCIÓN 3: INSERCIÓN DE DATOS ---
 	        FileOutputStream fos = new FileOutputStream(archivoSalida);

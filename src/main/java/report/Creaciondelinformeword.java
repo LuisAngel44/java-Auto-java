@@ -22,7 +22,7 @@ public class Creaciondelinformeword {
 		Controller controller12=new Controller();
  	   String ITEM=controller12.ElegirITEM();
 		
-        String rutaExcel = "src/main/resources/Excel_"+ITEM+".xlsx"; 
+        String rutaExcel = "src/main/resources/excel/ITEM"+ITEM+"/Resultados_Grafana_"+ITEM+".xlsx"; 
         String carpetaImagenes = "src/main/resources/img/ITEM"+ITEM+"/"; 
         String rutaSalidaWord = "src/main/resources/word/ITEM"+ITEM+"/Reporte_Final_Consolidado"+ITEM+".docx";
         // ---------------------
@@ -51,8 +51,10 @@ public class Creaciondelinformeword {
                 String departamento = getValorCelda(row, 2);
                 String provincia = getValorCelda(row, 3);
                 String distrito = getValorCelda(row, 4);
-                String codigoLocal = getValorCelda(row, 5); 
-
+              // String codigoLocal = getValorCelda(row, 5); 
+             // Ahora el valor que se guarde en codigoLocal siempre tendrá 6 cifras
+                String codigoLocal = formatearCodigoLocal(getValorCelda(row, 5));	
+                
                 String maxIn = getValorCelda(row, 6);
                 String minIn = getValorCelda(row, 7);
                 String avgIn = getValorCelda(row, 8);
@@ -191,7 +193,7 @@ public class Creaciondelinformeword {
 
     // --- UTILITARIOS ---
 
-    private static String buscarImagen(String carpeta, String tipo, String codigo) {
+  /*  private static String buscarImagen(String carpeta, String tipo, String codigo) {
         File folder = new File(carpeta);
         File[] files = folder.listFiles();
         if (files != null) {
@@ -203,6 +205,29 @@ public class Creaciondelinformeword {
             }
         }
         return null;
+    }*/
+    
+    private static String buscarImagen(String carpeta, String tipo, String codigo) {
+        File folder = new File(carpeta);
+        File[] files = folder.listFiles();
+        if (files != null) {
+            // Obtenemos la versión sin ceros a la izquierda para tener ambas opciones
+            // Ejemplo: si codigo es "000123", codigoSinCeros será "123"
+            String codigoSinCeros = codigo.replaceFirst("^0+(?!$)", "");
+
+            for (File f : files) {
+                String name = f.getName();
+                // Verifica si el nombre del archivo contiene el tipo (Descarga/Salida)
+                if (name.contains(tipo)) {
+                    // Intenta buscar con el código de 6 dígitos (con ceros)
+                    // O intenta buscar con el código original (sin ceros)
+                    if (name.contains(codigo) || name.contains(codigoSinCeros)) {
+                        return f.getAbsolutePath();
+                    }
+                }
+            }
+        }
+        return null; // Si no encuentra ninguna, devuelve null
     }
 
     private static void estilarCabecera(XWPFTableRow row) {
@@ -236,4 +261,18 @@ public class Creaciondelinformeword {
             default: return "";
         }
     }
+    
+    private static String formatearCodigoLocal(String codigo) {
+        if (codigo == null || codigo.trim().isEmpty()) return "000000";
+        try {
+            // Eliminamos posibles decimales que Apache POI a veces añade (ej. 123.0)
+            double valorDoc = Double.parseDouble(codigo);
+            return String.format("%06d", (long) valorDoc);
+        } catch (Exception e) {
+            return codigo; // Si no es numérico, devolvemos el original
+        }
+    }
+    
+    
+    
 }

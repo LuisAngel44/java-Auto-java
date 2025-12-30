@@ -47,7 +47,7 @@ public class minedu {
 //		
 	
 		Controller controller=new Controller();
-	    int[] columnasDeseadas = {0,1,2};
+	    int[] columnasDeseadas = {0,1,2,3,4,5};
 	    String RutaExcelFinal = "src/main/resources/";
 	    String ITEM=controller.ElegirITEM();
 	    String NombreExcel="Excel_"+ITEM+".xlsx";
@@ -64,7 +64,7 @@ public class minedu {
         String codigo_local;
         String CID;    
         String NomLLEE;
-        String Regio;
+        String Departamento;
         String Provincia;
         String Distrito;     
         String Peak_Receive;
@@ -97,10 +97,13 @@ public class minedu {
             for (List<String> fila : misDatos) {
             	 
             	WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+            	
                 codigo_local = fila.get(0);             
                 CID=fila.get(1);
                 NomLLEE=fila.get(2);
-             
+                Departamento=fila.get(3);
+                Provincia=fila.get(4);
+                Distrito=fila.get(5); 
                 n = n + 1; // Ahora funcionar  sin errores
                 if(codigo_local.matches("[\\d\\.]+")) { 
                 String url=WebController.ElegirURL(fechaini, fechafin,ITEM, codigo_local, CID,driver);
@@ -121,7 +124,6 @@ public class minedu {
                    menuReducido = true; // Cambiamos a true para que no vuelva a entrar
                }
                
-               
         //----------------------------------------------
                 //marcar y desmarcar 
                       // 1. Localizar los elementos (ajusta los selectores a tu p gina)
@@ -138,7 +140,7 @@ public class minedu {
 
                 // 4. GUARDAR EN EXCEL (¡NUEVO!)
                
-               ExcelController.escribirExcelResultados(ITEM,codigo_local, NomLLEE, CID, RutaExcelFinal+"excel/ITEM"+ITEM+"/Resultados_Grafana_"+ITEM+".xlsx", datosCapturados);
+               ExcelController.escribirExcelResultados(Departamento, Provincia,Distrito ,ITEM,codigo_local, NomLLEE, CID, RutaExcelFinal+"excel/ITEM"+ITEM+"/Resultados_Grafana_"+ITEM+".xlsx", datosCapturados);
                 
                 
           //-------------------------------------------------------------------
