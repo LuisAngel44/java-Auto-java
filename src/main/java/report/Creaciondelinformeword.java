@@ -24,7 +24,7 @@ public class Creaciondelinformeword {
 		
         String rutaExcel = "src/main/resources/excel/ITEM"+ITEM+"/Resultados_Grafana_"+ITEM+".xlsx"; 
         String carpetaImagenes = "src/main/resources/img/ITEM"+ITEM+"/"; 
-        String rutaSalidaWord = "src/main/resources/word/ITEM"+ITEM+"/Reporte_Final_Consolidado"+ITEM+".docx";
+        String rutaSalidaWord = "src/main/resources/word/ITEM"+ITEM+"/Reporte_Final_Consolidadoi"+ITEM+".docx";
         // ---------------------
         System.out.println("REPORTE GENERADO EN: " +rutaSalidaWord +rutaExcel+carpetaImagenes);
         generarReporteMasivo(rutaExcel, carpetaImagenes, rutaSalidaWord);

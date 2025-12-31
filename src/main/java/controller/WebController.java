@@ -57,10 +57,10 @@ public class WebController {
 
       // AQU  CODIGO DE USER ...
       WebElement campoUser = driver.findElement(By.name("user")); 
-      campoUser.sendKeys("ap-view"); // <--- CAMBIA "admin" POR TU USUARIO REAL
+      campoUser.sendKeys("minedu-i301"); // <--- CAMBIA "admin" POR TU USUARIO REAL
    // 2. Ubicar campo de Contrase a y escribir
       WebElement campoPass = driver.findElement(By.name("password"));
-      campoPass.sendKeys("ap-view@123"); // <--- PON TU CLAVE REAL
+      campoPass.sendKeys("m7n1du@i01"); // <--- PON TU CLAVE REAL
       WebElement botonLogin = driver.findElement(By.xpath("//button[contains(., 'Log in')]"));
       botonLogin.click();
 
@@ -68,6 +68,15 @@ public class WebController {
 
       return driver;
   }
+  
+  
+	
+	public String completarConCeros(String texto) {
+	    if (texto.length() >= 6) {
+	        return texto;
+	    }
+	    return "0".repeat(6 - texto.length()) + texto;
+	}
   
   public static String ElegirURL(String fechaINI, String fechafin,String item,String codigo_local,String CID,WebDriver drive) {
 	 
