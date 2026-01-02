@@ -79,7 +79,9 @@ public class WebController {
 	}
   
   public static String ElegirURL(String fechaINI, String fechafin,String item,String codigo_local,String CID,WebDriver drive) {
-	 
+	  if(codigo_local.length()<6) {
+			 codigo_local="0".repeat(6 - codigo_local.length()) + codigo_local;
+		 }
 
 			//   "13/12/2025 00:00"; si es item 2 o item 4 
 			     //  "12/01/2026 23:59";	  
