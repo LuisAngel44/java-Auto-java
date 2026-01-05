@@ -1,0 +1,110 @@
+/* estilos.css - Tema Gris/Blanco Moderno */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+.root {
+    /* Fondo general: un gris muy suave, casi blanco */
+    -fx-background-color: #F2F4F6;
+    -fx-font-family: 'Roboto', 'Segoe UI', sans-serif;
+}
+
+/* --- La Tarjeta Central --- */
+.card-container {
+    /* Fondo blanco puro para que resalte */
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 12px;
+    /* Sombra suave y difuminada para dar efecto de elevación */
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 20, 0, 0, 4);
+    -fx-padding: 30px;
+    /* Un borde gris muy sutil */
+    -fx-border-color: #E5E9EB;
+    -fx-border-width: 1px;
+    -fx-border-radius: 12px;
+}
+
+/* --- Textos --- */
+.header-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    /* Azul oscuro intenso para el título principal */
+    -fx-text-fill: #2C3E50;
+}
+
+.header-subtitle {
+    -fx-font-size: 14px;
+    /* Gris medio para el subtítulo */
+    -fx-text-fill: #7F8C8D;
+    -fx-padding: 0 0 20 0;
+}
+
+.label {
+    /* Gris oscuro para las etiquetas de los campos */
+    -fx-text-fill: #4F5B66;
+    -fx-font-weight: 500;
+    -fx-font-size: 13px;
+}
+
+/* --- Inputs (Campos de texto y fechas) --- */
+.text-field, .date-picker .text-field {
+    /* Fondo gris muy pálido */
+    -fx-background-color: #F8F9FA;
+    -fx-text-fill: #333333; /* Texto casi negro */
+    -fx-prompt-text-fill: #A0AAB2; /* Color del texto de ayuda (placeholder) */
+    -fx-border-color: #DDE2E5; /* Borde gris claro */
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 10px;
+}
+
+/* Cuando haces clic en un campo (Foco) */
+.text-field:focused, .date-picker:focused, .date-picker .text-field:focused {
+    -fx-background-color: #FFFFFF; /* El fondo se vuelve blanco puro */
+    -fx-border-color: #3498DB; /* Borde azul brillante */
+    /* Resplandor azul suave */
+    -fx-effect: dropshadow(three-pass-box, rgba(52,152,219,0.25), 8, 0, 0, 0);
+}
+
+/* --- Botón de Acción Principal --- */
+.action-button {
+    /* Gradiente azul vibrante */
+    -fx-background-color: linear-gradient(to right, #3498DB, #2980B9);
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-background-radius: 30px; /* Botón redondeado tipo píldora */
+    -fx-cursor: hand;
+    /* Sombra azulada para darle volumen */
+    -fx-effect: dropshadow(three-pass-box, rgba(52,152,219,0.4), 10, 0, 0, 2);
+}
+
+.action-button:hover {
+    /* Se aclara ligeramente al pasar el mouse */
+    -fx-background-color: linear-gradient(to right, #4AA3DF, #3498DB);
+    -fx-translate-y: -2px; /* Pequeña elevación */
+}
+
+.action-button:pressed {
+    -fx-background-color: #2573A7; /* Azul más oscuro al hacer clic */
+    -fx-translate-y: 1px;
+    -fx-effect: none;
+}
+
+/* --- Área de Log (Consola) --- */
+.log-area {
+    -fx-font-family: 'Consolas', monospace;
+    -fx-font-size: 12px;
+    /* Fondo gris claro, no negro */
+    -fx-control-inner-background: #F4F6F8;
+    /* Texto oscuro para buen contraste */
+    -fx-text-fill: #333333;
+    -fx-background-radius: 8px;
+    -fx-border-color: #DDE2E5;
+    -fx-border-radius: 8px;
+    -fx-padding: 5px;
+}
+
+/* Eliminar el fondo predeterminado del contenido del TextArea */
+.log-area .content {
+    -fx-background-color: transparent;
+    -fx-padding: 10px;
+}

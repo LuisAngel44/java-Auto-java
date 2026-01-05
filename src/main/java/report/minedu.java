@@ -4,7 +4,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 
-import controller.Controller;
+//import controller.Controller;
 import controller.ExcelController;
 import controller.WebController;
 
@@ -39,17 +39,13 @@ import org.openqa.selenium.JavascriptExecutor;
 
 
 public class minedu {
-	
-	
 
-	public static void main(String[] args) throws InterruptedException {
-
-//		
+    // Quitamos 'static' y 'main'. Ahora es un método público que recibe datos.
+    public void ejecutarProceso(String fechaInicio, String fechaFin, String codigoItem) {
 	
-		Controller controller=new Controller();
 	    int[] columnasDeseadas = {0,1,2,3,4,5};
 	    String RutaExcelFinal = "src/main/resources/";
-	    String ITEM=controller.ElegirITEM();
+	    String ITEM=codigoItem;
 	    String NombreExcel="Excel_"+ITEM+".xlsx";
         int n = 0;
         System.out.println(NombreExcel);
@@ -87,8 +83,7 @@ public class minedu {
         
         
      //escoger el link para las graficas 
-       String fechaini=controller.ElegirFechaIni();
-       String  fechafin=controller.ElegirFechaFinal();
+   
             
         try {
         	WebController  webController=new WebController();
@@ -106,7 +101,7 @@ public class minedu {
                 Distrito=fila.get(5); 
                 n = n + 1; // Ahora funcionar  sin errores
                 if(codigo_local.matches("[\\d\\.]+")) { 
-                String url=WebController.ElegirURL(fechaini, fechafin,ITEM, codigo_local, CID,driver);
+                String url=WebController.ElegirURL(fechaInicio, fechaFin,ITEM, codigo_local, CID,driver);
                 Thread.sleep(1000); 
                 
                 System.out.println(url);
