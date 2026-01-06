@@ -9,80 +9,68 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.stage.FileChooser; // Importante
 import javafx.stage.Stage;
+import java.io.File;
 import java.time.format.DateTimeFormatter;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+
 public class AppLauncher extends Application {
 
-    private TextArea areaLog; // Lo hacemos variable de clase para acceder fácil
+    private TextArea areaLog;
+    private File archivoSeleccionado; // Para guardar la referencia del Excel subido
 
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Generador MINEDU Pro");
 
-        // --- 1. Contenedor Principal (Raíz) ---
-        // VBox organiza los elementos uno debajo del otro
-        VBox mainLayout = new VBox(20); // 20px de espacio vertical entre elementos
+        VBox mainLayout = new VBox(20);
         mainLayout.setAlignment(Pos.CENTER);
-        mainLayout.setPadding(new Insets(30)); // Margen externo grande
+        mainLayout.setPadding(new Insets(30));
 
-        // --- 2. Header (Títulos) ---
+        // --- 1. Header ---
         VBox headerBox = new VBox(10);
         headerBox.setAlignment(Pos.CENTER);
         
-        
         try {
-            // Cargar la imagen desde la carpeta resources/img
             Image imgLogo = new Image(getClass().getResourceAsStream("/logoSvteche/logosvtench.png"));
             ImageView vistaLogo = new ImageView(imgLogo);
-            
-            // Ajustar tamaño del logo (Juega con este valor: 150, 200, etc.)
             vistaLogo.setFitWidth(180); 
-            vistaLogo.setPreserveRatio(true); // Mantiene las proporciones para no deformarlo
-
-            // Agregamos el logo al header
+            vistaLogo.setPreserveRatio(true);
             headerBox.getChildren().add(vistaLogo);
-            
-            // EXTRA: Poner el logo también como icono de la ventana (barra de tareas)
             primaryStage.getIcons().add(imgLogo);
-
         } catch (Exception e) {
-            System.out.println("Advertencia: No se encontró el logo en /img/logo.png");
+            System.out.println("Advertencia: No se encontró el logo.");
         }
         
-        
         Label lblTitle = new Label("Generador de Reportes");
-        lblTitle.getStyleClass().add("header-title"); // Clase CSS
-        
-        Label lblSubtitle = new Label("Automatización MINEDU / NOC");
-        lblSubtitle.getStyleClass().add("header-subtitle"); // Clase CSS
-        
-        headerBox.getChildren().addAll(lblTitle, lblSubtitle);
+        lblTitle.getStyleClass().add("header-title");
+        headerBox.getChildren().add(lblTitle);
 
-        // --- 3. La "Tarjeta" del Formulario ---
-        VBox formCard = new VBox(15); // Espacio interno vertical
-        formCard.getStyleClass().add("card-container"); // ASIGNAMOS LA CLASE CSS DE TARJETA
-        formCard.setMaxWidth(450); // Ancho máximo para que se vea elegante
+        // --- 2. Tarjeta del Formulario ---
+        VBox formCard = new VBox(15);
+        formCard.getStyleClass().add("card-container");
+        formCard.setMaxWidth(450);
 
-        // Usamos un GridPane dentro de la tarjeta para alinear etiquetas y campos
+        // Botón Subir Excel
+        Button btnSubirExcel = new Button("📁 CARGAR BASE EXCEL");
+        btnSubirExcel.setMaxWidth(Double.MAX_VALUE);
+        btnSubirExcel.setStyle("-fx-background-color: #2c3e50; -fx-text-fill: white;"); // Estilo rápido
+
+        Label lblArchivoStatus = new Label("Ningún archivo seleccionado");
+        lblArchivoStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: gray;");
+
         GridPane gridForm = new GridPane();
         gridForm.setHgap(15); gridForm.setVgap(15);
         gridForm.setAlignment(Pos.CENTER);
 
-        // Componentes
         DatePicker dateFechaIni = new DatePicker();
-        dateFechaIni.setPromptText("Seleccionar inicio");
-        dateFechaIni.setMaxWidth(Double.MAX_VALUE); // Que ocupe todo el ancho disponible
-
+        dateFechaIni.setMaxWidth(Double.MAX_VALUE);
         DatePicker dateFechaFin = new DatePicker();
-        dateFechaFin.setPromptText("Seleccionar fin");
         dateFechaFin.setMaxWidth(Double.MAX_VALUE);
-
         TextField txtItem = new TextField();
-        txtItem.setPromptText("Ej: Código de local");
 
-        // Agregamos al grid con etiquetas
         gridForm.add(new Label("Fecha Inicio:"), 0, 0);
         gridForm.add(dateFechaIni, 1, 0);
         gridForm.add(new Label("Fecha Fin:"), 0, 1);
@@ -90,86 +78,92 @@ public class AppLauncher extends Application {
         gridForm.add(new Label("Item / Código:"), 0, 2);
         gridForm.add(txtItem, 1, 2);
 
-        // Botón de Acción (Centrado)
         Button btnGenerar = new Button("INICIAR PROCESO");
-        btnGenerar.getStyleClass().add("action-button"); // Clase CSS del botón moderno
-        btnGenerar.setMaxWidth(Double.MAX_VALUE); // Botón ancho
+        btnGenerar.getStyleClass().add("action-button");
+        btnGenerar.setMaxWidth(Double.MAX_VALUE);
         
-        // Metemos el grid y el botón dentro de la tarjeta
-        formCard.getChildren().addAll(gridForm, btnGenerar);
+        formCard.getChildren().addAll(btnSubirExcel, lblArchivoStatus, new Separator(), gridForm, btnGenerar);
 
-        // --- 4. Área de Log (Fuera de la tarjeta, abajo) ---
+        // --- 3. Área de Log ---
         areaLog = new TextArea();
-        areaLog.getStyleClass().add("log-area"); // Clase CSS de terminal
+        areaLog.getStyleClass().add("log-area");
         areaLog.setPrefHeight(120);
         areaLog.setEditable(false);
-        areaLog.setWrapText(true);
-        areaLog.setMaxWidth(450); // Mismo ancho que la tarjeta
-        VBox.setVgrow(areaLog, Priority.ALWAYS); // Que crezca si soba espacio
+        areaLog.setMaxWidth(450);
+        VBox.setVgrow(areaLog, Priority.ALWAYS);
 
-        // --- 5. Armar el Layout Principal ---
-        mainLayout.getChildren().addAll(headerBox, formCard, areaLog);
+        // --- 4. Botón Descargar (Abajo) ---
+        Button btnDescargar = new Button("📥 DESCARGAR RESULTADO (EXCEL)");
+        btnDescargar.setMaxWidth(450);
+        btnDescargar.setDisable(true); // Deshabilitado hasta que termine el proceso
 
-        // --- Lógica del Botón ---
+        mainLayout.getChildren().addAll(headerBox, formCard, areaLog, btnDescargar);
+
+        // --- LÓGICA DE BOTONES ---
+
+        // Evento: Subir Excel
+        btnSubirExcel.setOnAction(e -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Seleccionar Base de Datos Excel");
+            fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Archivos Excel", "*.xlsx", "*.xls")
+            );
+            archivoSeleccionado = fileChooser.showOpenDialog(primaryStage);
+            
+            if (archivoSeleccionado != null) {
+                lblArchivoStatus.setText("📂 Archivo: " + archivoSeleccionado.getName());
+                log("✔ Excel cargado: " + archivoSeleccionado.getAbsolutePath());
+            }
+        });
+
+        // Evento: Generar Proceso
         btnGenerar.setOnAction(e -> {
-            if(dateFechaIni.getValue() == null || dateFechaFin.getValue() == null) {
-                log("⚠ Atención: Debe seleccionar ambas fechas.");
-                return;
-            }
-            if(txtItem.getText().isEmpty()) {
-                log("⚠ Atención: El campo Ítem/Código está vacío.");
+            if(dateFechaIni.getValue() == null || dateFechaFin.getValue() == null || txtItem.getText().isEmpty()) {
+                log("⚠ Atención: Complete todos los campos.");
                 return;
             }
 
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            String fIni = dateFechaIni.getValue().format(formatter);
-            String fFin = dateFechaFin.getValue().format(formatter);
-            String item = txtItem.getText();
-
-            log("🚀 Iniciando proceso para: " + item + " [" + fIni + " - " + fFin + "]");
-            btnGenerar.setDisable(true); // Deshabilitar botón mientras procesa
+            log("🚀 Iniciando proceso...");
+            btnGenerar.setDisable(true);
             btnGenerar.setText("PROCESANDO...");
 
             new Thread(() -> {
                 try {
-                    // --- TU LLAMADA AL CONTROLADOR ---
-                    // report.minedu proceso = new report.minedu();
-                    // proceso.ejecutarProceso(fIni, fFin, item);
-
-                    Thread.sleep(2000); // Simulación de trabajo (BORRAR LUEGO)
-
+                    Thread.sleep(2500); // Simulación
                     javafx.application.Platform.runLater(() -> {
-                        log("✅ ¡Proceso finalizado con éxito!");
+                        log("✅ ¡Proceso finalizado!");
                         btnGenerar.setDisable(false);
                         btnGenerar.setText("INICIAR PROCESO");
+                        btnDescargar.setDisable(false); // Habilitar descarga
                     });
                 } catch (Exception ex) {
-                    javafx.application.Platform.runLater(() -> {
-                        log("❌ Error crítico: " + ex.getMessage());
-                         btnGenerar.setDisable(false);
-                         btnGenerar.setText("INICIAR PROCESO");
-                    });
+                    javafx.application.Platform.runLater(() -> log("❌ Error: " + ex.getMessage()));
                 }
             }).start();
         });
 
-        // Creación de la Escena
-        Scene scene = new Scene(mainLayout, 550, 650); // Ventana un poco más alta
-        
-        // Importante: Cargar el CSS
+        // Evento: Descargar Excel
+        btnDescargar.setOnAction(e -> {
+            FileChooser saveChooser = new FileChooser();
+            saveChooser.setTitle("Guardar Reporte");
+            saveChooser.setInitialFileName("Reporte_MINEDU.xlsx");
+            saveChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel", "*.xlsx"));
+            
+            File saveFile = saveChooser.showSaveDialog(primaryStage);
+            if (saveFile != null) {
+                log("💾 Reporte guardado en: " + saveFile.getAbsolutePath());
+            }
+        });
+
+        Scene scene = new Scene(mainLayout, 550, 750); // Aumentamos un poco el alto
         try {
-            String css = this.getClass().getResource("/estilos.css").toExternalForm();
-            scene.getStylesheets().add(css);
-        } catch (Exception e) {
-            System.out.println("Error cargando CSS: Asegúrate que estilos.css esté en src/main/resources");
-        }
+            scene.getStylesheets().add(getClass().getResource("/estilos.css").toExternalForm());
+        } catch (Exception e) {}
 
         primaryStage.setScene(scene);
-        //primaryStage.setResizable(false); // Opcional: evitar que cambien el tamaño
         primaryStage.show();
     }
 
-    // Método auxiliar para escribir en el log más fácil
     private void log(String mensaje) {
         areaLog.appendText(mensaje + "\n");
     }
