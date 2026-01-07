@@ -16,11 +16,11 @@ import java.util.Iterator;
 
 public class Creaciondelinformeword {
 
-	public static void main(String[] args) throws InterruptedException {
+	public static void lazarcreacion(String item) {
 		// TODO Auto-generated method stub
 		// --- CONFIGURACIÓN ---
-		Controller controller12=new Controller();
- 	   String ITEM=controller12.ElegirITEM();
+		
+ 	   String ITEM=item;
 		
         String rutaExcel = "src/main/resources/excel/ITEM"+ITEM+"/Resultados_Grafana_"+ITEM+".xlsx"; 
         String carpetaImagenes = "src/main/resources/img/ITEM"+ITEM+"/"; 
