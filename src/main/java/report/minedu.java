@@ -146,7 +146,7 @@ public class minedu {
           //-------------------------------------------------------------------
            //TOMAR CAPTURA DE LA IMAGENES 
                 
-                WebController.TomadeCapturaGurardado(driver, codigo_local,ITEM); 
+             //   WebController.TomadeCapturaGurardado(driver, codigo_local,ITEM); 
               
             	  }else {
             		  
