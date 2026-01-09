@@ -40,7 +40,6 @@ import org.openqa.selenium.JavascriptExecutor;
 
 public class minedu {
 	
-	
 
 	public static void main(String[] args) throws InterruptedException {
 
@@ -117,7 +116,7 @@ public class minedu {
                 
                Thread.sleep(3000); 
         //RETRAER EL MENU VERTICAL------------------
-               
+               Thread.sleep(3000); 
             // 2. Solo entrará aquí en la primera iteración
                if (!menuReducido) {
                    WebController.colapsarMenuGrafana(driver);
@@ -146,7 +145,7 @@ public class minedu {
           //-------------------------------------------------------------------
            //TOMAR CAPTURA DE LA IMAGENES 
                 
-             //   WebController.TomadeCapturaGurardado(driver, codigo_local,ITEM); 
+               WebController.TomadeCapturaGurardado(driver, codigo_local,ITEM); 
               
             	  }else {
             		  
