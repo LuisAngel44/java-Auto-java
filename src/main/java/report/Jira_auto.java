@@ -8,22 +8,32 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Base64;
-
+import io.github.cdimascio.dotenv.Dotenv; // Importante agregar esta librería
 public class Jira_auto {
 
 	public static void main(String[] args) {
-		
-		        String jiraUrl = "";
-		        String email = "";
-		        String token = "";
-		        String auth = email + ":" + token;
+		// 1. Cargamos el archivo .env que está en la raíz
+        Dotenv dotenv = Dotenv.load();
+		// 2. Reemplazamos las cadenas de texto por las variables del archivo
+        String jiraUrl = dotenv.get("JIRA_URL").trim();
+        String email = dotenv.get("JIRA_EMAIL").trim();
+        String token = dotenv.get("JIRA_TOKEN").trim();
+     // AGREGA ESTO PARA VERIFICAR:
+        System.out.println("--- DEPURACIÓN ---");
+        System.out.println("URL Base: '" + jiraUrl + "'"); // Fíjate si tiene comillas o espacios
+        System.out.println("URL Final: '" + jiraUrl + "/rest/api/3/search'");
+        System.out.println("Email: '" + email + "'");
+        System.out.println("------------------");
+        
+        System.out.print("sss"+token);
+        String auth = email + ":" + token;
 		        String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
 		        ObjectMapper mapper = new ObjectMapper();
 
 		        try {
 		            ObjectNode payload = mapper.createObjectNode();
 		            payload.put("jql", "project = 'MSP' ORDER BY created DESC");
-		            payload.put("maxResults", 30);
+		            payload.put("maxResults", 50000);
 		            
 		            ArrayNode fields = payload.putArray("fields");
 		            fields.add("summary").add("status").add("created").add("assignee");
@@ -35,7 +45,7 @@ public class Jira_auto {
 
 		            HttpClient client = HttpClient.newHttpClient();
 		            HttpRequest request = HttpRequest.newBuilder()
-		                    .uri(URI.create(jiraUrl + "/rest/api/3/search/jql"))
+		            		.uri(URI.create(jiraUrl + "/rest/api/3/search/jql"))
 		                    .header("Authorization", "Basic " + encodedAuth)
 		                    .header("Content-Type", "application/json")
 		                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))

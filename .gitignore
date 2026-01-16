@@ -1,4 +1,7 @@
 target/
 *.zip
 *.docx
+*.xlsx
 *.png
+*.jpg
+.env
