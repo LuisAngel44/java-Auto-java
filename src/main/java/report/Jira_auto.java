@@ -33,7 +33,7 @@ public class Jira_auto {
 		        try {
 		            ObjectNode payload = mapper.createObjectNode();
 		            payload.put("jql", "project = 'MSP' ORDER BY created DESC");
-		            payload.put("maxResults", 50000);
+		            payload.put("maxResults", 50);
 		            
 		            ArrayNode fields = payload.putArray("fields");
 		            fields.add("summary").add("status").add("created").add("assignee");
