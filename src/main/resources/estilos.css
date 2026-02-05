@@ -1,110 +1,130 @@
-/* estilos.css - Tema Gris/Blanco Moderno hoooo  Luis */
-
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+/* estilos.css - Luis Rubio - Edición Protocolo Final */
 
 .root {
-    /* Fondo general: un gris muy suave, casi blanco */
-    -fx-background-color: #F2F4F6;
-    -fx-font-family: 'Roboto', 'Segoe UI', sans-serif;
+    -fx-background-color: #111827; /* Fondo oscuro profundo */
+    -fx-font-family: 'Segoe UI', sans-serif;
 }
 
-/* --- La Tarjeta Central --- */
-.card-container {
-    /* Fondo blanco puro para que resalte */
-    -fx-background-color: #FFFFFF;
-    -fx-background-radius: 12px;
-    /* Sombra suave y difuminada para dar efecto de elevación */
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 20, 0, 0, 4);
-    -fx-padding: 30px;
-    /* Un borde gris muy sutil */
-    -fx-border-color: #E5E9EB;
-    -fx-border-width: 1px;
-    -fx-border-radius: 12px;
-}
-
-/* --- Textos --- */
+/* --- TÍTULOS Y TEXTOS --- */
 .header-title {
-    -fx-font-size: 24px;
-    -fx-font-weight: 700;
-    /* Azul oscuro intenso para el título principal */
-    -fx-text-fill: #2C3E50;
-}
-
-.header-subtitle {
-    -fx-font-size: 14px;
-    /* Gris medio para el subtítulo */
-    -fx-text-fill: #7F8C8D;
-    -fx-padding: 0 0 20 0;
+    -fx-text-fill: #bef264; /* Lima brillante */
+    -fx-font-size: 26px;
+    -fx-font-weight: 800;
 }
 
 .label {
-    /* Gris oscuro para las etiquetas de los campos */
-    -fx-text-fill: #4F5B66;
-    -fx-font-weight: 500;
-    -fx-font-size: 13px;
+    -fx-text-fill: #ffffff; /* Blanco puro para contraste total */
+    -fx-font-weight: bold;
 }
 
-/* --- Inputs (Campos de texto y fechas) --- */
+/* --- TABS CON BORDES DE COLORES --- */
+.tab-pane .tab-header-area .tab-header-background { -fx-background-color: transparent; }
+.tab { -fx-background-color: rgb(94, 108, 162);-fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent ; -fx-padding: 10 20; -fx-margin: 0 5 0 0;-fx-font-weight: bold;
+   
+
+
+}
+
+.tab-blue { -fx-border-color: #3b82f6; -fx-border-width: 0 0 4 0; }
+.tab-yellow { -fx-border-color: #facc15; -fx-border-width: 0 0 4 0; }
+.tab-magenta { -fx-border-color: #d946ef; -fx-border-width: 0 0 4 0; }
+.tab-orange { -fx-border-color:#f55702; -fx-border-width: 0 0 4 0; }
+.tab-red {-fx-border-color: #f51702; -fx-border-width: 0 0 4 0;}
+.tab-green {-fx-border-color: #35f527; -fx-border-width: 0 0 4 0;}
+
+.tab:selected { -fx-background-color: #929596; }
+.tab:selected .tab-label { -fx-text-fill: #ffffff; }
+.tab .tab-label { -fx-text-fill: #C9B9AB; }
+/* --- TARJETAS (CARDS) --- */
+.card-base {
+    -fx-background-color: #1f2937;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-padding: 25;
+}
+.card-cyan { -fx-border-color: #06b6d4; -fx-border-width: 2; }
+.card-magenta { -fx-border-color: #d946ef; -fx-border-width: 2; }
+
+/* --- COMPONENTES DE FORMULARIO --- */
 .text-field, .date-picker .text-field {
-    /* Fondo gris muy pálido */
-    -fx-background-color: #F8F9FA;
-    -fx-text-fill: #333333; /* Texto casi negro */
-    -fx-prompt-text-fill: #A0AAB2; /* Color del texto de ayuda (placeholder) */
-    -fx-border-color: #DDE2E5; /* Borde gris claro */
-    -fx-border-radius: 6px;
-    -fx-background-radius: 6px;
-    -fx-padding: 10px;
-}
-
-/* Cuando haces clic en un campo (Foco) */
-.text-field:focused, .date-picker:focused, .date-picker .text-field:focused {
-    -fx-background-color: #FFFFFF; /* El fondo se vuelve blanco puro */
-    -fx-border-color: #3498DB; /* Borde azul brillante */
-    /* Resplandor azul suave */
-    -fx-effect: dropshadow(three-pass-box, rgba(52,152,219,0.25), 8, 0, 0, 0);
-}
-
-/* --- Botón de Acción Principal --- */
-.action-button {
-    /* Gradiente azul vibrante */
-    -fx-background-color: linear-gradient(to right, #3498DB, #2980B9);
+    -fx-background-color: #374151;
     -fx-text-fill: white;
-    -fx-font-size: 15px;
-    -fx-font-weight: 700;
-    -fx-background-radius: 30px; /* Botón redondeado tipo píldora */
-    -fx-cursor: hand;
-    /* Sombra azulada para darle volumen */
-    -fx-effect: dropshadow(three-pass-box, rgba(52,152,219,0.4), 10, 0, 0, 2);
+    -fx-border-color: #4b5563;
+    -fx-prompt-text-fill: #94a3b8;
 }
 
-.action-button:hover {
-    /* Se aclara ligeramente al pasar el mouse */
-    -fx-background-color: linear-gradient(to right, #4AA3DF, #3498DB);
-    -fx-translate-y: -2px; /* Pequeña elevación */
-}
+/* --- BOTONES CON GRADIENTES --- */
+.btn-blue { -fx-background-color: linear-gradient(to right, #3b82f6, #6366f1); -fx-text-fill: white; -fx-font-weight: bold; }
+.btn-orange { -fx-background-color: linear-gradient(to right, #f97316, #fbbf24); -fx-text-fill: #111827; -fx-font-weight: 900; }
+.btn-hollow { -fx-background-color: transparent; -fx-border-color: #facc15; -fx-text-fill: #facc15; -fx-font-weight: bold; }
 
-.action-button:pressed {
-    -fx-background-color: #2573A7; /* Azul más oscuro al hacer clic */
-    -fx-translate-y: 1px;
-    -fx-effect: none;
-}
-
-/* --- Área de Log (Consola) --- */
+/* --- LOG CONSOLA AQUA --- */
 .log-area {
+    -fx-control-inner-background: #030712;
+    -fx-text-fill: #22d3ee;
     -fx-font-family: 'Consolas', monospace;
-    -fx-font-size: 12px;
-    /* Fondo gris claro, no negro */
-    -fx-control-inner-background: #F4F6F8;
-    /* Texto oscuro para buen contraste */
-    -fx-text-fill: #333333;
-    -fx-background-radius: 8px;
-    -fx-border-color: #DDE2E5;
-    -fx-border-radius: 8px;
-    -fx-padding: 5px;
+    -fx-border-color: #06b6d4;
+    -fx-border-radius: 5;
 }
 
-/* Eliminar el fondo predeterminado del contenido del TextArea */
-.log-area .content {
+/* Botones de la barra superior */
+.window-button {
     -fx-background-color: transparent;
-    -fx-padding: 10px;
+    -fx-text-fill: white;
+    -fx-font-family: "Segoe UI", Arial;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+
+.window-button:hover {
+    -fx-background-color: #374151;
+}
+
+.close-button:hover {
+    -fx-background-color: #e81123; /* Rojo al pasar el mouse por la X */
+}
+
+/* Corregir el color blanco que no agarraba */
+.label, .header-title {
+    -fx-text-fill: white !important;
+    -fx-font-weight: bold;
+}
+
+/* Quitar el borde celeste molesto de los Tabs */
+.tab-pane .tab-header-area .tab-header-background {
+    -fx-opacity: 0;
+}
+.tab:focused {
+    -fx-focus-color: transparent !important;
+    -fx-faint-focus-color: transparent !important;
+}
+
+/* Contenedor de la barra (el HBox que creamos) */
+.custom-header {
+    -fx-background-color: #1a202c; /* Fondo oscuro sólido */
+    -fx-alignment: CENTER_RIGHT;
+}
+
+/* Estilo base para ambos botones */
+.window-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #94a3b8; /* Gris azulado moderno */
+    -fx-font-size: 16px;
+    -fx-font-family: "Segoe UI", "Arial";
+    -fx-pref-width: 45;
+    -fx-pref-height: 32;
+    -fx-transition: 0.2s; /* Para que el cambio de color sea suave */
+}
+
+/* Efecto hover general (Gris oscuro) */
+.window-button:hover {
+    -fx-background-color: #374151;
+    -fx-text-fill: white;
+}
+
+/* Botón de cerrar específico (Rojo moderno) */
+.close-button:hover {
+    -fx-background-color: #e81123; /* Rojo estándar de Windows moderno */
+    -fx-text-fill: white;
 }

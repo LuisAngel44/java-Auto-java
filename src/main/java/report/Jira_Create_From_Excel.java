@@ -148,7 +148,7 @@ public class Jira_Create_From_Excel {
                 break;
             default:
                 System.out.println("⚠️ Item desconocido (" + numeroItem + "). Usando defecto (Item 3).");
-                requestTypeId = "128";
+                requestTypeId = "1";
                 campoId = "customfield_10252";
                 break;
         }
@@ -171,8 +171,8 @@ public class Jira_Create_From_Excel {
             
             ObjectNode values = payload.putObject("requestFieldValues");
 
-            values.put("summary", "Alerta NOC: Incidente - " + host);
-            values.put("customfield_10180", "Host: " + host + "\nState: " + estado + "\n");
+            values.put("summary", host);
+            values.put("customfield_10180",  estado );
             values.put("customfield_10090", nombre);
             values.put("customfield_10091", cel);
             

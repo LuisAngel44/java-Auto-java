@@ -63,9 +63,9 @@ public class EnvioMasivoWhatsApp {
                 // --- MENSAJE PERSONALIZADO INTEGRADO ---
                 String mensaje = "Hola, le saluda Luis, Residente del proyecto Bitel - MINEDU.\n\n"
                         + "Estimado(a) " + nombrecontacto + ",\n"
-                        + "Nuestro sistema de monitoreo ha detectado una caída de tráfico en la IE " + nombreIE 
+                        + " Nuestro sistema de monitoreo ha detectado una caída de Servicio en la IE " + nombreIE 
                         + " (Código Local: " + codigoLocal + ").\n\n"
-                        + "¿Podría confirmarnos si hay corte de energía eléctrica en la zona, o si los equipos se encuentran apagados? Quedo atento, gracias.";
+                        + "¿Podría confirmarnos si hay corte de energía eléctrica en la zona, si los equipos se encuentran apagados u otros incovenientes? Quedo atento, gracias.";
                 // ---------------------------------------
 
                 try {

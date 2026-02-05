@@ -20,38 +20,21 @@ import java.util.Base64;
 
 public class Jira_Full {
 
-    // =========================================================================
-    // ⚙️ CONFIGURACIÓN DE IDs (ACTUALIZADO CON TU LISTA REAL)
-    // =========================================================================
-    
-    // Datos del Local
-    private static final String ID_COD_LOCAL       = "customfield_10168"; // Código de Local del Local Educativo
-    private static final String ID_COD_MODULAR     = "customfield_10169"; // Código Modular
-    private static final String ID_NOMBRE_IE       = "customfield_10359"; // Nombre de la Institución Educativa
-    
-    // Ubicación
-    private static final String ID_DEPARTAMENTO    = "customfield_10355"; // Departamento
-    private static final String ID_PROVINCIA       = "customfield_10356"; // Provincia
-    private static final String ID_DISTRITO        = "customfield_10357"; // Distrito
-    
-    // Contacto
-    private static final String ID_NOMBRE_CONTACTO = "customfield_10090"; // Nombre de Contacto
-    private static final String ID_NUMERO_CONTACTO = "customfield_10091"; // Número de Contacto
-
-    // Datos Técnicos / Ticket
-    private static final String ID_ITEM            = "customfield_10249"; // Ítem al que pertenece
-    private static final String ID_TIPO_INCIDENCIA = "customfield_10469"; // Tipo de Incidencia
-    private static final String ID_DESCRIP_SOLUCION= "customfield_10089"; // Descripción de la solución
-    private static final String ID_MEDIO_TX        = "customfield_10361"; // Medio de transmisión implementado
-    private static final String ID_TIEMPO_NO_DISP  = "customfield_10178"; // Tiempo de no disponibilidad efectiva
-    
-    // Campos Estándar de Sistema (No requieren ID numérico)
-    private static final String FIELD_KEY = "key";
-    private static final String FIELD_STATUS = "status";
-    private static final String FIELD_SUMMARY = "summary";
-    private static final String FIELD_CREATED = "created";
-    private static final String FIELD_RESOLUTION_DATE = "resolutiondate";
-    // =========================================================================
+    // IDs de Campos
+    private static final String ID_COD_LOCAL       = "customfield_10168";
+    private static final String ID_COD_MODULAR     = "customfield_10169";
+    private static final String ID_NOMBRE_IE       = "customfield_10359";
+    private static final String ID_DEPARTAMENTO    = "customfield_10355";
+    private static final String ID_PROVINCIA       = "customfield_10356";
+    private static final String ID_DISTRITO        = "customfield_10357";
+    private static final String ID_NOMBRE_CONTACTO = "customfield_10090";
+    private static final String ID_NUMERO_CONTACTO = "customfield_10091";
+    private static final String ID_ITEM            = "customfield_10249";
+    private static final String ID_TIPO_INCIDENCIA = "customfield_10469";
+    private static final String ID_DESCRIP_INCIDENTE = "customfield_10180"; // <--- Nuevo Campo
+    private static final String ID_DESCRIP_SOLUCION= "customfield_10089";
+    private static final String ID_MEDIO_TX        = "customfield_10361";
+    private static final String ID_TIEMPO_NO_DISP  = "customfield_10178";
 
     public static void main(String[] args) {
         Dotenv dotenv = Dotenv.load();
@@ -69,12 +52,11 @@ public class Jira_Full {
         String[] encabezados = {
             "Código de Local", "Código Modular", "Nombre de la IE", "Departamento", 
             "Provincia", "Distrito", "Nombre de Contacto", "Número de Contacto", 
-            "Ítem", "Clave", "Tipo de Incidencia", "Estado", 
-            "Descripción", "Fecha Generación", "Fecha Solución", 
-            "Descripción Solución", "Tiempo solución", "No disponibilidad", "Medio transmisión"
+            "Ítem al que pertenece", "Clave", "Tipo de Incidencia", "Estado", 
+            "Descripción del incidente", "Fecha y hora de generación", "Fecha y hora de solución", 
+            "Descripción de la solución", "Tiempo solución", "Tiempo de no disponibilidad", "Medio de transmisión"
         };
 
-        // Estilos para el encabezado (Negrita)
         Row headerRow = sheet.createRow(0);
         CellStyle headerStyle = workbook.createCellStyle();
         Font font = workbook.createFont();
@@ -90,8 +72,9 @@ public class Jira_Full {
         String nextPageToken = null;
         boolean seguirBuscando = true;
         int filaActual = 1;
+        int totalIssues = 0;
 
-        System.out.println("🚀 Iniciando generación de reporte con IDs reales...");
+        System.out.println("🚀 Iniciando generación de reporte...");
 
         try {
             while (seguirBuscando) {
@@ -100,13 +83,12 @@ public class Jira_Full {
                 payload.put("maxResults", 100);
                 if (nextPageToken != null) payload.put("nextPageToken", nextPageToken);
 
-                // Solicitamos campos a la API
                 ArrayNode fields = payload.putArray("fields");
-                fields.add(FIELD_SUMMARY).add(FIELD_STATUS).add(FIELD_CREATED).add(FIELD_RESOLUTION_DATE)
+                fields.add("summary").add("status").add("created").add("resolutiondate")
                       .add(ID_COD_LOCAL).add(ID_COD_MODULAR).add(ID_NOMBRE_IE)
                       .add(ID_DEPARTAMENTO).add(ID_PROVINCIA).add(ID_DISTRITO)
                       .add(ID_NOMBRE_CONTACTO).add(ID_NUMERO_CONTACTO)
-                      .add(ID_ITEM).add(ID_TIPO_INCIDENCIA)
+                      .add(ID_ITEM).add(ID_TIPO_INCIDENCIA).add(ID_DESCRIP_INCIDENTE)
                       .add(ID_DESCRIP_SOLUCION).add(ID_MEDIO_TX).add(ID_TIEMPO_NO_DISP);
 
                 String jsonBody = mapper.writeValueAsString(payload);
@@ -122,6 +104,7 @@ public class Jira_Full {
                 if (response.statusCode() == 200) {
                     JsonNode root = mapper.readTree(response.body());
                     JsonNode issues = root.path("issues");
+                    totalIssues = root.path("total").asInt();
 
                     if (issues.isEmpty()) break;
 
@@ -129,56 +112,33 @@ public class Jira_Full {
                         JsonNode f = issue.path("fields");
                         Row row = sheet.createRow(filaActual++);
 
-                        // 1. Código de Local
                         row.createCell(0).setCellValue(obtenerTexto(f.path(ID_COD_LOCAL)));
-                        // 2. Código Modular
                         row.createCell(1).setCellValue(obtenerTexto(f.path(ID_COD_MODULAR)));
-                        // 3. Nombre de la IE
                         row.createCell(2).setCellValue(obtenerTexto(f.path(ID_NOMBRE_IE)));
-                        // 4. Departamento
                         row.createCell(3).setCellValue(obtenerTexto(f.path(ID_DEPARTAMENTO)));
-                        // 5. Provincia
                         row.createCell(4).setCellValue(obtenerTexto(f.path(ID_PROVINCIA)));
-                        // 6. Distrito
                         row.createCell(5).setCellValue(obtenerTexto(f.path(ID_DISTRITO)));
-                        
-                        // 7. Nombre de Contacto
                         row.createCell(6).setCellValue(obtenerTexto(f.path(ID_NOMBRE_CONTACTO)));
-                        // 8. Número de Contacto
                         row.createCell(7).setCellValue(obtenerTexto(f.path(ID_NUMERO_CONTACTO)));
-                        
-                        // 9. Ítem (Ahora usamos el campo real 10249)
                         row.createCell(8).setCellValue(obtenerTexto(f.path(ID_ITEM))); 
-
-                        // 10. Clave (MSP-XXX)
                         row.createCell(9).setCellValue(issue.path("key").asText());
-                        // 11. Tipo de Incidencia
                         row.createCell(10).setCellValue(obtenerTexto(f.path(ID_TIPO_INCIDENCIA)));
-                        // 12. Estado
                         row.createCell(11).setCellValue(f.path("status").path("name").asText());
-                        // 13. Descripción (Summary)
-                        row.createCell(12).setCellValue(f.path("summary").asText());
                         
-                        // Fechas
+                        // 13. Descripción del incidente (Manejo de ADF)
+                        row.createCell(12).setCellValue(extraerTextoADF(f.path(ID_DESCRIP_INCIDENTE)));
+                        
                         String fechaCreacion = f.path("created").asText();
                         String fechaSolucion = f.path("resolutiondate").asText(null);
                         
-                        // 14. Fecha Generación
                         row.createCell(13).setCellValue(formatearFecha(fechaCreacion));
-                        // 15. Fecha Solución
                         row.createCell(14).setCellValue(formatearFecha(fechaSolucion));
-
-                        // 16. Descripción Solución
                         row.createCell(15).setCellValue(obtenerTexto(f.path(ID_DESCRIP_SOLUCION)));
-
-                        // 17. Tiempo Solución (Calculado matemáticamente para exactitud)
                         row.createCell(16).setCellValue(calcularTiempo(fechaCreacion, fechaSolucion));
-
-                        // 18. No disponibilidad (Usamos el campo real 10178)
                         row.createCell(17).setCellValue(obtenerTexto(f.path(ID_TIEMPO_NO_DISP)));
-                        
-                        // 19. Medio transmisión
                         row.createCell(18).setCellValue(obtenerTexto(f.path(ID_MEDIO_TX)));
+
+                        mostrarProgreso(filaActual - 1, totalIssues);
                     }
 
                     if (root.has("nextPageToken")) {
@@ -186,72 +146,96 @@ public class Jira_Full {
                     } else {
                         seguirBuscando = false;
                     }
-                    System.out.println("✅ Filas procesadas: " + (filaActual - 1));
                 } else {
                     System.err.println("❌ Error: " + response.body());
                     break;
                 }
             }
 
-            // Autoajustar ancho de columnas
             for (int i = 0; i < encabezados.length; i++) sheet.autoSizeColumn(i);
 
-            try (FileOutputStream fileOut = new FileOutputStream("Reporte_Jira_Minedu_Final.xlsx")) {
+            try (FileOutputStream fileOut = new FileOutputStream("Reporte_Jira_Minedu_"+"05-02-20206"+".xlsx")) {
                 workbook.write(fileOut);
             }
             workbook.close();
-            System.out.println("🎉 ¡Excel generado con éxito!");
+            System.out.println("\n🎉 ¡Excel generado con éxito!");
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    // --- MÉTODOS AUXILIARES ---
+    // Procesa el JSON de Jira (ADF) para convertirlo en texto plano para el Excel
+    private static String extraerTextoADF(JsonNode node) {
+        if (node.isMissingNode() || node.isNull()) return "";
+        StringBuilder sb = new StringBuilder();
+        try {
+            JsonNode content = node.path("content");
+            for (JsonNode block : content) {
+                for (JsonNode item : block.path("content")) {
+                    if (item.has("text")) {
+                        sb.append(item.get("text").asText());
+                    } else if ("hardBreak".equals(item.path("type").asText())) {
+                        sb.append("\n");
+                    }
+                }
+                sb.append("\n");
+            }
+        } catch (Exception e) {
+            return node.toString(); // Fallback si falla el parseo
+        }
+        return sb.toString().trim();
+    }
+
+    private static void mostrarProgreso(int actual, int total) {
+        int width = 50; 
+        double porcentaje = (double) actual / total;
+        int progress = (int) (porcentaje * width);
+
+        StringBuilder bar = new StringBuilder("\r[");
+        for (int i = 0; i < width; i++) {
+            if (i < progress) bar.append("=");
+            else if (i == progress) bar.append(">");
+            else bar.append(" ");
+        }
+        bar.append(String.format("] %d%% (%d/%d)", (int) (porcentaje * 100), actual, total));
+        System.out.print(bar.toString());
+    }
 
     private static String obtenerTexto(JsonNode node) {
         if (node.isMissingNode() || node.isNull()) return "";
-        
-        // Si tiene 'value' (Listas desplegables)
         if (node.has("value")) {
             String val = node.get("value").asText();
-            // Si tiene 'child' (Listas en cascada como Dep/Prov)
             if (node.has("child") && node.get("child").has("value")) {
                 return val + " - " + node.get("child").get("value").asText();
             }
             return val;
         }
-        
-        // Si es un Array (Ej. Etiquetas o múltiples opciones)
         if (node.isArray()) {
             StringBuilder sb = new StringBuilder();
             for (JsonNode n : node) {
                 if (sb.length() > 0) sb.append(", ");
-                if (n.has("value")) sb.append(n.get("value").asText());
-                else sb.append(n.asText());
+                sb.append(n.has("value") ? n.get("value").asText() : n.asText());
             }
             return sb.toString();
         }
-
         return node.asText("");
     }
 
     private static String calcularTiempo(String startStr, String endStr) {
-        if (startStr == null || endStr == null || endStr.isEmpty()) return "En curso";
+        if (startStr == null || endStr == null || endStr.isEmpty() || endStr.equals("null")) return "En curso";
         try {
             ZonedDateTime start = ZonedDateTime.parse(startStr, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
             ZonedDateTime end = ZonedDateTime.parse(endStr, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
             Duration duration = Duration.between(start, end);
-            long hours = duration.toHours();
-            long minutes = duration.toMinutesPart();
-            return hours + "h " + minutes + "m";
+            return String.format("%dh %dm", duration.toHours(), duration.toMinutesPart());
         } catch (Exception e) {
             return "-";
         }
     }
 
     private static String formatearFecha(String dateStr) {
-        if (dateStr == null || dateStr.isEmpty()) return "";
+        if (dateStr == null || dateStr.isEmpty() || dateStr.equals("null")) return "";
         try {
             ZonedDateTime zdt = ZonedDateTime.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
             return zdt.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));

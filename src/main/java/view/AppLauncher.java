@@ -3,181 +3,187 @@ package view;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import java.io.File;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.stage.StageStyle;
 
 public class AppLauncher extends Application {
 
     private TextArea areaLog;
-    private File archivoSeleccionado;
+    private double xOffset = 0;
+    private double yOffset = 0;
 
     @Override
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("Generador MINEDU Pro");
+        // 1. ELIMINAR BARRA DE WINDOWS PARA LOOK MODERNO
+        primaryStage.initStyle(StageStyle.UNDECORATED);
 
-        // Layout Principal: Un VBox que contiene el Header y el TabPane
-        VBox rootLayout = new VBox(10);
-        rootLayout.setPadding(new Insets(20));
-        rootLayout.setAlignment(Pos.TOP_CENTER);
+        // Contenedor principal sin espacio entre el header y el contenido
+        VBox root = new VBox(0);
+        root.getStyleClass().add("root");
 
-        // --- 1. HEADER (Fijo para todas las pestañas) ---
-        VBox headerBox = createHeader(primaryStage);
+        // --- BARRA DE TÍTULO PERSONALIZADA (ESTILO MODERNO) ---
+        HBox customHeader = new HBox();
+        customHeader.getStyleClass().add("custom-header");
+        customHeader.setAlignment(Pos.CENTER_RIGHT);
+        customHeader.setPrefHeight(35);
+        
+        // Título de la app en la barra (opcional, alineado a la izquierda)
+        Label windowTitle = new Label(" SVTECH // Protocol - Luis Rubio");
+        windowTitle.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-padding: 0 0 0 10;");
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // --- 2. CONTENEDOR DE PESTAÑAS (TabPane) ---
+        // Botones de control
+        Button btnMin = new Button("♥"); // Em dash para mejor estética
+        btnMin.getStyleClass().add("window-button");
+        btnMin.setOnAction(e -> primaryStage.setIconified(true));
+
+        Button btnClose = new Button("♦"); // Multiplication X para look pro
+        btnClose.getStyleClass().addAll("window-button", "close-button");
+        btnClose.setOnAction(e -> System.exit(0));
+
+        customHeader.getChildren().addAll(windowTitle, spacer, btnMin, btnClose);
+
+        // Lógica para arrastrar la ventana desde la barra personalizada
+        customHeader.setOnMousePressed(event -> {
+            xOffset = event.getSceneX();
+            yOffset = event.getSceneY();
+        });
+        customHeader.setOnMouseDragged(event -> {
+            primaryStage.setX(event.getScreenX() - xOffset);
+            primaryStage.setY(event.getScreenY() - yOffset);
+        });
+
+        // --- CONTENIDO DE LA APLICACIÓN ---
+        VBox mainContent = new VBox(20);
+        mainContent.setPadding(new Insets(20));
+
+        // Header original del diseño
+        Label lblTitle = new Label("SVTECH // MINEDU PROTOCOL");
+        lblTitle.getStyleClass().add("header-title");
+        Label lblSub = new Label("Developed for Bitel Perú");
+        lblSub.setStyle("-fx-text-fill: #94a3b8;");
+
+        // TabPane (Pestañas)
         TabPane tabPane = new TabPane();
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-        VBox.setVgrow(tabPane, Priority.ALWAYS); // Hace que las pestañas ocupen el espacio disponible
 
-        // Crear las 3 pestañas
-        Tab tabDatos = new Tab("Obtener Datos", createSeccionDatos(primaryStage));
-     // Busca esta línea en tu método start y cámbiala:
-        Tab tabFotos = new Tab("Conteo de Imágenes", createSeccionFotos(primaryStage));
-        Tab tabInforme = new Tab("Generar Informe", createSeccionInforme(primaryStage));
+        Tab t1 = new Tab("CREATE REPORT-GRFICAS", createSeccionDatos()); t1.getStyleClass().add("tab-blue");
+        Tab t2 = new Tab("CONTEO DE GRAFICAS", createSeccionFotos()); t2.getStyleClass().add("tab-yellow");
+        Tab t3 = new Tab("CREATE REPORT WORD", createSeccionJiraCompleta()); t3.getStyleClass().add("tab-magenta");
+        Tab t4 = new Tab("CREATE TICKET JIRA", createSeccionInforme()); t4.getStyleClass().add("tab-orange");
+        Tab t5 = new Tab("EXPORT ALL TICKET JIRA", createSeccionInforme()); t5.getStyleClass().add("tab-red");
+        Tab t6 = new Tab("UPDATE TICKET JIRA", createSeccionInforme()); t6.getStyleClass().add("tab-green");
+        tabPane.getTabs().addAll(t1, t2, t3, t4, t5, t6);
 
-        tabPane.getTabs().addAll(tabDatos, tabFotos, tabInforme);
-
-        // --- 3. ÁREA DE LOG (Común abajo) ---
+        // Log Consola
+        VBox logBox = new VBox(8);
+        Label lblLog = new Label("SYSTEM LOG");
         areaLog = new TextArea();
-        areaLog.setPrefHeight(100);
-        areaLog.setEditable(false);
+        areaLog.setPrefHeight(150);
         areaLog.getStyleClass().add("log-area");
+        areaLog.setEditable(false);
+        logBox.getChildren().addAll(lblLog, areaLog);
 
-        rootLayout.getChildren().addAll(headerBox, tabPane, areaLog);
+        mainContent.getChildren().addAll(lblTitle, lblSub, tabPane, logBox);
+        root.getChildren().addAll(customHeader, mainContent);
 
-        Scene scene = new Scene(rootLayout, 550, 780);
+        Scene scene = new Scene(root, 1150, 800);
         try {
             scene.getStylesheets().add(getClass().getResource("/estilos.css").toExternalForm());
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            System.err.println("Error: No se encontró estilos.css en la carpeta resources.");
+        }
 
         primaryStage.setScene(scene);
         primaryStage.show();
+        
+        log("Initiating secure connection to Jira API...");
     }
 
-    // --- SECCIÓN 1: OBTENER DATOS (Tu código original) ---
-    private VBox createSeccionDatos(Stage stage) {
-        VBox container = new VBox(15);
+    // --- SECCIONES DE CONTENIDO ---
+    private HBox createSeccionJiraCompleta() {
+        HBox container = new HBox(30);
         container.setPadding(new Insets(20));
         container.setAlignment(Pos.CENTER);
 
-        VBox formCard = new VBox(15);
-        formCard.getStyleClass().add("card-container");
+        VBox cardLeft = new VBox(15);
+        cardLeft.getStyleClass().addAll("card-base", "card-cyan");
+        cardLeft.setPrefWidth(480);
 
-        Button btnSubirExcel = new Button("📁 CARGAR BASE EXCEL");
-        btnSubirExcel.setMaxWidth(Double.MAX_VALUE);
-        btnSubirExcel.setStyle("-fx-background-color: #2c3e50; -fx-text-fill: white;");
+        GridPane grid = new GridPane();
+        grid.setVgap(12); grid.setHgap(15);
+        String[] fields = {"PROJECT KEY:", "SUMMARY:", "ISSUE TYPE:", "DESCRIPTION:", "LOMP:"};
+        for(int i=0; i<fields.length; i++) {
+            grid.add(new Label(fields[i]), 0, i);
+            TextField tf = new TextField();
+            tf.setPrefWidth(300);
+            grid.add(tf, 1, i);
+        }
+        cardLeft.getChildren().addAll(new Label("CREATE JIRA TICKET"), new Separator(), grid);
 
-        Label lblArchivoStatus = new Label("Ningún archivo seleccionado");
+        VBox cardRight = new VBox(25);
+        cardRight.getStyleClass().addAll("card-base", "card-magenta");
+        cardRight.setPrefWidth(450);
+        cardRight.setAlignment(Pos.CENTER);
 
-        GridPane gridForm = new GridPane();
-        gridForm.setHgap(10); gridForm.setVgap(10);
-        gridForm.add(new Label("Fecha Inicio:"), 0, 0);
-        gridForm.add(new DatePicker(), 1, 0);
-        gridForm.add(new Label("Fecha Fin:"), 0, 1);
-        gridForm.add(new DatePicker(), 1, 1);
-        gridForm.add(new Label("Item / Código:"), 0, 2);
-        gridForm.add(new TextField(), 1, 2);
+        Button b1 = new Button("UPLOAD DATA MANIFEST >>");
+        b1.getStyleClass().add("btn-blue"); b1.setPrefHeight(45); b1.setMaxWidth(Double.MAX_VALUE);
 
-        Button btnGenerar = new Button("INICIAR PROCESO");
-        btnGenerar.getStyleClass().add("action-button");
-        btnGenerar.setMaxWidth(Double.MAX_VALUE);
+        Button b2 = new Button("FETCH TEMPLATE");
+        b2.getStyleClass().add("btn-hollow"); b2.setPrefWidth(200);
 
-        formCard.getChildren().addAll(btnSubirExcel, lblArchivoStatus, new Separator(), gridForm, btnGenerar);
-        container.getChildren().add(formCard);
-        
+        Button b3 = new Button("EXECUTE JIRA PROTOCOL >>");
+        b3.getStyleClass().add("btn-orange"); b3.setPrefHeight(45); b3.setMaxWidth(Double.MAX_VALUE);
+
+        cardRight.getChildren().addAll(new Label("EXECUTION PANEL"), b1, b2, b3);
+        container.getChildren().addAll(cardLeft, cardRight);
         return container;
     }
 
-    // --- SECCIÓN 2: CONTEO DE IMÁGENES (Nueva) ---
-    private VBox createSeccionFotos(Stage stage) { // Añadimos stage como parámetro
-        VBox container = new VBox(20);
+    private VBox createSeccionDatos() {
+        VBox card = new VBox(20);
+        card.getStyleClass().addAll("card-base", "card-cyan");
+        card.setMaxWidth(600);
+        card.setAlignment(Pos.CENTER);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(20); grid.setVgap(15);
+        grid.setAlignment(Pos.CENTER);
+        grid.add(new Label("Fecha Inicio:"), 0, 0); grid.add(new DatePicker(), 1, 0);
+        grid.add(new Label("Fecha Fin:"), 0, 1); grid.add(new DatePicker(), 1, 1);
+        grid.add(new Label("Item / Código:"), 0, 2); grid.add(new TextField(), 1, 2);
+
+        Button btn = new Button("INICIAR EXTRACCIÓN PROTOCOL");
+        btn.getStyleClass().add("btn-blue"); btn.setPrefWidth(400);
+
+        card.getChildren().addAll(new Label("PARÁMETROS DE EXTRACCIÓN"), grid, btn);
+        VBox container = new VBox(card);
+        container.setAlignment(Pos.CENTER);
         container.setPadding(new Insets(30));
-        container.setAlignment(Pos.CENTER);
-
-        Label lblInfo = new Label("Módulo de Conteo de Imágenes");
-        lblInfo.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-
-        // --- NUEVO: CARGAR EXCEL PARA CONTEO ---
-        Button btnCargarExcelConteo = new Button("📁 CARGAR EXCEL PARA CONTEO");
-        btnCargarExcelConteo.setMaxWidth(300);
-        btnCargarExcelConteo.setStyle("-fx-background-color: #34495e; -fx-text-fill: white;");
-
-        Label lblStatusConteo = new Label("No se ha cargado base para conteo");
-        lblStatusConteo.setStyle("-fx-font-size: 11px; -fx-text-fill: #7f8c8d;");
-
-        // Evento para el nuevo botón
-        btnCargarExcelConteo.setOnAction(e -> {
-            FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("Seleccionar Excel de Conteo");
-            fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Archivos Excel", "*.xlsx", "*.xls")
-            );
-            File file = fileChooser.showOpenDialog(stage);
-            if (file != null) {
-                lblStatusConteo.setText("📂 Base: " + file.getName());
-                log("✔ Base de conteo cargada: " + file.getAbsolutePath());
-            }
-        });
-
-        // Tu botón original de carpeta
-        Button btnSeleccionarCarpeta = new Button("📷 SELECCIONAR CARPETA DE FOTOS");
-        btnSeleccionarCarpeta.setMaxWidth(300);
-
-        // Agregamos todo al contenedor
-        container.getChildren().addAll(
-            lblInfo, 
-            new Separator(), 
-            btnCargarExcelConteo, 
-            lblStatusConteo, 
-            btnSeleccionarCarpeta
-        );
-        
         return container;
     }
 
-    // --- SECCIÓN 3: GENERAR INFORME (Nueva) ---
-    private VBox createSeccionInforme(Stage stage) {
-        VBox container = new VBox(15);
-        container.setPadding(new Insets(20));
-        container.setAlignment(Pos.CENTER);
-
-        Button btnDescargar = new Button("📥 DESCARGAR RESULTADO FINAL (Word)");
-        btnDescargar.getStyleClass().add("action-button");
-        btnDescargar.setPrefHeight(50);
-
-        container.getChildren().add(btnDescargar);
-        return container;
+    private VBox createSeccionFotos() { 
+        VBox v = new VBox(new Label("Módulo de Conteo de Imágenes Activo...")); 
+        v.setAlignment(Pos.CENTER); v.setPadding(new Insets(50));
+        return v;
+    }
+    
+    private VBox createSeccionInforme() { 
+        VBox v = new VBox(new Label("Generador de Reportes Word Listo...")); 
+        v.setAlignment(Pos.CENTER); v.setPadding(new Insets(50));
+        return v;
     }
 
-    // Helper para el Header
-    private VBox createHeader(Stage primaryStage) {
-        VBox headerBox = new VBox(10);
-        headerBox.setAlignment(Pos.CENTER);
-        try {
-            Image imgLogo = new Image(getClass().getResourceAsStream("/logoSvteche/logosvtench.png"));
-            ImageView vistaLogo = new ImageView(imgLogo);
-            vistaLogo.setFitWidth(150);
-            vistaLogo.setPreserveRatio(true);
-            headerBox.getChildren().add(vistaLogo);
-            primaryStage.getIcons().add(imgLogo);
-        } catch (Exception e) {}
-        
-        Label lblTitle = new Label("Generador de Reportes");
-        lblTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
-        headerBox.getChildren().add(lblTitle);
-        return headerBox;
+    private void log(String msg) {
+        areaLog.appendText("[SYSTEM]: " + msg + "\n");
     }
 
-    private void log(String mensaje) {
-        if (areaLog != null) areaLog.appendText(mensaje + "\n");
-    }
-
-    public static void main(String[] args) {
-        launch(args);
-    }
+    public static void main(String[] args) { launch(args); }
 }
