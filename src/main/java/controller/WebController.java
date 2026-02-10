@@ -185,52 +185,69 @@ public class WebController {
 	}
   
   
-  public static void TomadeCapturaGurardado(WebDriver driver,String codigo_local,String ITEM) throws InterruptedException {
-      
+public static void TomadeCapturaGurardado(WebDriver driver, String codigo_local, String ITEM) {
+    try {
+        System.out.println(" 📸 Iniciando secuencia de capturas...");
 
+        // --------------------------------------------------------------------------------
+        // PASO 1: CAPTURA DE DESCARGA (VERDE)
+        // Estrategia: Ocultar el Amarillo (Subida)
+        // --------------------------------------------------------------------------------
+        try {
+            // Buscamos el botón "Subida" (Amarillo)
+            WebElement checkAmarillo = driver.findElement(By.xpath("//*[local-name()='text' and contains(., 'Subida')]"));
+            checkAmarillo.click(); // Clic para OCULTAR la subida
+            
+            Thread.sleep(2000); // Esperar que se actualice la gráfica
+            
+            // Tomamos la foto de lo que queda (Solo Descarga/Verde)
+            tomarCapturaElemento(driver, "Descarga_CL_" + codigo_local, ITEM);
+            
+        } catch (Exception e) {
+            System.out.println("⚠️ Error en captura Verde: " + e.getMessage());
+        }
 
+        // --------------------------------------------------------------------------------
+        // PASO 2: CAPTURA DE SALIDA (AMARILLO)
+        // Estrategia: ACTIVAR el Amarillo y DESACTIVAR el Verde
+        // --------------------------------------------------------------------------------
+        try {
+            // 1. VOLVER A ACTIVAR EL AMARILLO (SUBIDA)
+            // Importante: Volver a buscar el elemento para asegurar que no esté "vencido"
+            WebElement checkAmarillo = driver.findElement(By.xpath("//*[local-name()='text' and contains(., 'Subida')]"));
+            checkAmarillo.click(); // Clic para MOSTRAR la subida nuevamente
+            
+            Thread.sleep(1000); // Pequeña pausa para que pinte la línea amarilla
 
-  try {
-	// --- ESCENARIO 1: Solo Verde ---
-      // Si la p gina carga con ambos marcados, haz clic en el amarillo para desmarcarlo
-	  Thread.sleep(2000);
-      WebElement checkAmarillo = driver.findElement(By.xpath("//*[local-name()='text' and contains(., 'Subida')]"));
-      checkAmarillo.click();
-      Thread.sleep(2000); // Espera breve para que la gr fica reaccione
-     tomarCapturaElemento(driver,"Descarga_"+"CL_"+codigo_local,ITEM);
-     // --- ESCENARIO 2: Solo Amarillo ---
+            // 2. DESACTIVAR EL VERDE (DESCARGA)
+            WebElement checkVerde = driver.findElement(By.xpath("//*[local-name()='text' and contains(., 'Descarga')]"));
+            checkVerde.click(); // Clic para OCULTAR la descarga
+            
+            Thread.sleep(2000); // Esperar que se borre la línea verde
+            
+            // Tomamos la foto de lo que queda (Solo Subida/Amarillo)
+            tomarCapturaElemento(driver, "Salida_CL_" + codigo_local, ITEM);
 
-	  
-	Thread.sleep(2000);
-	 WebElement checkVerde = driver.findElement(By.xpath("//*[local-name()='text' and contains(., 'Descarga')]"));
-	  checkVerde.click();
-	  Thread.sleep(2000);
-	  WebElement checkAmarillo1 = driver.findElement(By.xpath("//*[local-name()='text' and contains(., 'Subida')]"));
-	  checkAmarillo1.click();
-	  
-	   tomarCapturaElemento(driver, "Salida_"+"CL_"+codigo_local,ITEM); 
-	    
-	
-	
-	
-	
-} catch (InterruptedException e) {
-	// TODO Auto-generated catch block
-	e.printStackTrace();
-	  tomarCapturaElemento(driver, "Salida_"+"CL_"+codigo_local,ITEM); 
-	  try {
-		Thread.sleep(2000);
-	} catch (InterruptedException e1) {
-		// TODO Auto-generated catch block
-		e1.printStackTrace();
-	}
-	  tomarCapturaElemento(driver,"Descarga_"+"CL_"+codigo_local,ITEM);
+            // (OPCIONAL) 3. DEJAR TODO COMO ESTABA (ACTIVAR VERDE)
+            // Esto ayuda si el driver se reutiliza sin recargar la página
+            // checkVerde.click(); 
+
+        } catch (Exception e) {
+             System.out.println("⚠️ Error en captura Amarilla: " + e.getMessage());
+             // Si falla aquí, intenta tomar una foto de error por si acaso
+             tomarCapturaElemento(driver, "ERROR_SALIDA_" + codigo_local, ITEM);
+        }
+
+    } catch (Exception e) {
+        // --- BLOQUE DE RECUPERACIÓN GENERAL ---
+        System.out.println("⚠️ ERROR CRÍTICO EN LA LÓGICA DE CAPTURA.");
+        try {
+            tomarCapturaElemento(driver, "ERROR_GENERICO_CL_" + codigo_local, ITEM);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
 }
-//   WebElement check1Amarillo = driver.findElement(By.xpath("//*[local-name()='text' and text()='Sunida']"));
-
- 
-  }
-
 
   public static void tomarCapturaElemento(WebDriver driver, String NombreImagen,String ITEM) throws InterruptedException {
 	    try {

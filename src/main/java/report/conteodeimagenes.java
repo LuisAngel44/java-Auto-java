@@ -12,9 +12,9 @@ import java.util.Set;
 
 public class conteodeimagenes {
 
-    public void InterruptedException (String item)  {
-    
-    	String ITEM=item;
+    public static void main(String[] args) throws InterruptedException {
+    	Controller controller12=new Controller();
+    	   String ITEM=controller12.ElegirITEM();
         // --- CONFIGURACIÓN ---
         String rutaCarpeta = "src/main/resources/img/ITEM"+ITEM+"/"; // Pon tu ruta aquí
         String rutaExcel = "src/main/resources/Excel_"+ITEM+".xlsx";  // Pon tu ruta aquí

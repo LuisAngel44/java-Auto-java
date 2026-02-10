@@ -1,6 +1,5 @@
 package report;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -26,15 +25,15 @@ import java.util.regex.Pattern;
 
 public class TT {
 
-    // --- CONFIGURACIÓN ---
+    // --- CONFIGURACIÓN DE JIRA ---
     static final String SERVICE_DESK_ID = "34";
     static final String WORKSPACE_ID = "01cf423f-729d-4ecc-9da9-3df244069bb5";
     
-    // 🚨 IDs CONFIRMADOS
+    // IDs DE CAMPOS PERSONALIZADOS (Custom Fields)
     static final String FIELD_DESC_INCIDENTE = "customfield_10180"; 
     static final String FIELD_SOLUCION = "customfield_10089";
     static final String FIELD_TICKET_ID = "customfield_10320";
-    static final String FIELD_ORGANIZATION = "customfield_10002";
+    static final String FIELD_ORGANIZATION = "customfield_10002"; // Organizations
     
     static String jiraUrl;
     static String encodedAuth;
@@ -42,16 +41,18 @@ public class TT {
     static ObjectMapper mapper;
 
     public static void main(String[] args) {
+        // Cargar variables de entorno (.env)
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
         jiraUrl = dotenv.get("JIRA_URL") != null ? dotenv.get("JIRA_URL").trim().replaceAll("/$", "") : "";
         String email = dotenv.get("JIRA_EMAIL") != null ? dotenv.get("JIRA_EMAIL").trim() : "";
         String token = dotenv.get("JIRA_TOKEN") != null ? dotenv.get("JIRA_TOKEN").trim() : "";
         
         if (email.isEmpty() || token.isEmpty()) {
-            System.err.println("❌ ERROR: Credenciales faltantes en .env");
+            System.err.println("❌ ERROR: Credenciales faltantes en el archivo .env");
             return;
         }
         
+        // Autenticación Basic en Base64
         encodedAuth = Base64.getEncoder().encodeToString((email + ":" + token).getBytes());
         mapper = new ObjectMapper();
         client = HttpClient.newHttpClient();
@@ -60,17 +61,17 @@ public class TT {
              Workbook workbook = new XSSFWorkbook(file)) {
 
             Sheet sheet = workbook.getSheetAt(0);
-            System.out.println(">>> 🚀 INICIANDO CARGA v18 (API v3: SOPORTE NATIVO ADF) <<<");
+            System.out.println(">>> 🚀 INICIANDO CARGA CORREGIDA (Soporte Organizaciones + API v3) <<<");
             
             int exitosos = 0;
 
             for (Row row : sheet) {
-                if (row.getRowNum() == 0) continue; 
+                if (row.getRowNum() == 0) continue; // Saltar cabecera
 
                 String resumen = getCellValue(row, 0); 
                 if (resumen.isEmpty()) break;
 
-                // --- LECTURA ---
+                // Lectura de celdas del Excel
                 String descAlarma = getCellValue(row, 1);    
                 String idColegio = getCellValue(row, 2);     
                 String idDispositivo = getCellValue(row, 3); 
@@ -89,7 +90,7 @@ public class TT {
                 String tipoIncidencia = getCellValue(row, 17);
                 String tiempoNoDisp = getCellValue(row, 18);
                 
-                // Limpieza de Item ("Item 3" -> "3")
+                // Extraer el número del Item (ej: "Item 3" -> "3")
                 String itemRaw = getCellValue(row, 19); 
                 String itemNum = extraerSoloNumeros(itemRaw); 
                 
@@ -100,111 +101,94 @@ public class TT {
                 String catServicio = getCellValue(row, 24);   
 
                 System.out.println("\n------------------------------------------------");
-                System.out.println("🔄 Procesando: " + (resumen.length() > 40 ? resumen.substring(0, 40) + "..." : resumen));
+                System.out.println("🔄 Procesando ticket: " + resumen);
 
-                // 1️⃣ CREAR TICKET (Service Desk API)
+                // 1️⃣ CREAR TICKET (Usa Service Desk API)
                 String issueKey = crearTicketBasico(resumen, contactoNom, contactoCel, idColegio, idDispositivo, itemNum, areaExcel, catServicio);
 
                 if (issueKey != null) {
-                    System.out.println("   ✅ 1. Creado: " + issueKey);
+                    System.out.println("   ✅ 1. Creado con éxito: " + issueKey);
 
-                    // 2️⃣ DESCRIPCIÓN DEL INCIDENTE (USANDO API v3 + ADF) 🚨
+                    // 2️⃣ ACTUALIZAR DESCRIPCIÓN (ADF format)
                     if (!descAlarma.isEmpty()) {
-                        String descLimpia = descAlarma.replace("\\n", "\n").replace(" \n ", "\n").trim();
-                        boolean descOk = actualizarCampoADF(issueKey, FIELD_DESC_INCIDENTE, descLimpia, "Desc. Incidente (10180)");
-                        
-                        // Si falla API v3, ponemos comentario como último recurso
-                        if (!descOk) agregarComentario(issueKey, "📋 CONTENIDO ALARMA:\n" + descLimpia);
+                        String descLimpia = descAlarma.replace("\\n", "\n").trim();
+                        actualizarCampoADF(issueKey, FIELD_DESC_INCIDENTE, descLimpia, "Descripción");
                     }
 
                     // 3️⃣ NÚMERO DE TICKET
-                    actualizarCampoTexto(issueKey, FIELD_TICKET_ID, issueKey, "Número Ticket");
+                    actualizarCampoTexto(issueKey, FIELD_TICKET_ID, issueKey, "Referencia Ticket");
 
-                    // 4️⃣ DROPDOWNS
+                    // 4️⃣ DROPDOWNS Y CATEGORÍAS
                     if (!catServicio.isEmpty()) actualizarDropdown(issueKey, "customfield_10394", catServicio, "Categoría");
                     if (!causaRaiz.isEmpty()) actualizarDropdown(issueKey, "customfield_10135", causaRaiz, "Causa Raíz");
                     
-                    // 5️⃣ SOLUCIÓN (API v3 + ADF)
+                    // 5️⃣ SOLUCIÓN (ADF format)
                     if (!textoSolucion.isEmpty()) {
                         actualizarCampoADF(issueKey, FIELD_SOLUCION, textoSolucion, "Solución");
                     }
                     
-                    if (!tipoIncidencia.isEmpty()) actualizarCampoTexto(issueKey, "customfield_10469", tipoIncidencia.toUpperCase(), "Tipo Incidencia");
+                    if (!tipoIncidencia.isEmpty()) {
+                        actualizarCampoTexto(issueKey, "customfield_10469", tipoIncidencia.toUpperCase(), "Tipo Incidencia");
+                    }
 
-                    // 6️⃣ TIEMPOS Y FECHAS
+                    // 6️⃣ TIEMPOS, UBICACIÓN E IMÁGENES
                     actualizarTiempos(issueKey, fechaGen, fechaSol, tiempoNoDisp);
-
-                    // 7️⃣ DATOS UBICACIÓN
                     actualizarUbicacion(issueKey, dep, prov, dist, direccion, nombreIE, codModular, codLocal, medioTrans);
-
-                    // 8️⃣ IMÁGENES
                     if (!rutasImagenes.isEmpty()) subirImagenes(issueKey, rutasImagenes);
 
+                    // Escribir resultado en el Excel
                     row.createCell(25).setCellValue(issueKey); 
                     exitosos++;
-                    System.out.println("   ✨ TICKET FINALIZADO");
                 }
                 
-                Thread.sleep(1000); 
+                Thread.sleep(800); // Evitar Rate Limit de la API
             }
 
+            // Guardar el archivo Excel con los resultados
             try (FileOutputStream fileOut = new FileOutputStream("resultado_carga_final.xlsx")) {
                 workbook.write(fileOut);
-                System.out.println("\n🏁 FIN. Exitosos: " + exitosos);
+                System.out.println("\n🏁 PROCESO FINALIZADO. Tickets exitosos: " + exitosos);
             }
 
         } catch (Exception e) { e.printStackTrace(); }
     }
 
-    // =========================================================================
-    // CREACIÓN DE ADF (Formato JSON para API v3)
-    // =========================================================================
-    private static boolean actualizarCampoADF(String issueKey, String fieldId, String texto, String nombreLog) {
-        try {
-            ObjectNode doc = mapper.createObjectNode();
-            doc.put("type", "doc");
-            doc.put("version", 1);
-            
-            ArrayNode content = doc.putArray("content");
-            ObjectNode paragraph = content.addObject();
-            paragraph.put("type", "paragraph");
-            
-            ArrayNode pContent = paragraph.putArray("content");
-            ObjectNode textNode = pContent.addObject();
-            textNode.put("type", "text");
-            textNode.put("text", texto); 
-
-            ObjectNode payload = mapper.createObjectNode();
-            payload.putObject("fields").set(fieldId, doc);
-
-            // ⚠️ USAMOS API v3 AQUÍ
-            return enviarPutV3(issueKey, payload, nombreLog);
-        } catch (Exception e) { return false; }
-    }
-
-    // =========================================================================
-    // CREACIÓN BÁSICA
-    // =========================================================================
+    /**
+     * Crea el ticket inicial en Jira Service Management.
+     * Maneja el mapeo de Request Types y el envío correcto de Organizaciones por ID.
+     */
     private static String crearTicketBasico(String resumen, String nombre, String cel, String colId, String dispId, String itemNum, String area, String cat) {
         try {
+            // Obtenemos la configuración según el número de item (1, 2, 3 o 4)
             String[] config = obtenerConfiguracionItem(itemNum); 
+            String requestTypeId = config[0];
+            String assetFieldId = config[1];
+            String realOrgId = config[2]; // ID real de la organización en Jira
+
             ObjectNode payload = mapper.createObjectNode();
             payload.put("serviceDeskId", SERVICE_DESK_ID);
-            payload.put("requestTypeId", config[0]); 
+            payload.put("requestTypeId", requestTypeId); 
             
             ObjectNode values = payload.putObject("requestFieldValues");
             values.put("summary", resumen.length() > 250 ? resumen.substring(0, 245) + "..." : resumen);
-            values.put("customfield_10090", nombre); 
-            values.put("customfield_10091", cel);    
+            values.put("customfield_10090", nombre); // Nombre contacto
+            values.put("customfield_10091", cel);    // Celular contacto
             values.putObject("customfield_10176").put("value", "Incidente");
             
-            if (!itemNum.isEmpty()) values.putArray(FIELD_ORGANIZATION).add(itemNum);
+            // 🚨 CORRECCIÓN CLAVE: Envío de Organización como Arreglo de IDs (Strings)
+            if (!realOrgId.isEmpty()) {
+                ArrayNode orgArray = values.putArray(FIELD_ORGANIZATION);
+                orgArray.add(realOrgId); 
+                System.out.println("      🏢 Asignando Org ID: " + realOrgId + " (Item " + itemNum + ")");
+            }
 
+            // Campos de selección urbana/rural y categoría
             values.putObject("customfield_10504").put("value", area.equalsIgnoreCase("Urbana") ? "Urbana" : "Rural");
             values.putObject("customfield_10394").put("value", cat.isEmpty() ? "Servicio de acceso a Internet" : cat);
 
+            // Agregar activos (Assets/Insight)
             if (!colId.isEmpty()) agregarActivo(values, "customfield_10170", WORKSPACE_ID, colId);
-            if (!dispId.isEmpty()) agregarActivo(values, config[1], WORKSPACE_ID, dispId);
+            if (!dispId.isEmpty()) agregarActivo(values, assetFieldId, WORKSPACE_ID, dispId);
 
             String jsonBody = mapper.writeValueAsString(payload);
             HttpRequest request = HttpRequest.newBuilder()
@@ -219,93 +203,62 @@ public class TT {
             if (response.statusCode() == 201) {
                 return mapper.readTree(response.body()).get("issueKey").asText();
             } else {
-                System.err.println("   ❌ Error Creación: " + response.body());
+                System.err.println("   ❌ Error en creación (Status " + response.statusCode() + "): " + response.body());
                 return null;
             }
         } catch (Exception e) { return null; }
     }
 
-    // =========================================================================
-    // UTILIDADES DE ACTUALIZACIÓN (USAN v3)
-    // =========================================================================
+    /**
+     * Mapea el número de item del Excel con los IDs reales de Jira.
+     * Formato: { RequestTypeID, AssetFieldID, RealOrganizationID }
+     */
+    private static String[] obtenerConfiguracionItem(String numeroItem) {
+        switch (numeroItem) {
+            case "1": return new String[]{"126", "customfield_10250", "2"}; // Item 1 es ID 2
+            case "2": return new String[]{"127", "customfield_10251", "1"}; // Item 2 es ID 1
+            case "3": return new String[]{"128", "customfield_10252", "3"}; // Item 3 es ID 3
+            case "4": return new String[]{"129", "customfield_10253", "4"}; // Item 4 es ID 4
+            default:  return new String[]{"129", "customfield_10253", ""};
+        }
+    }
+
+    /**
+     * Actualiza campos de texto enriquecido usando Atlassian Document Format (ADF).
+     * Requerido por la API v3 de Jira.
+     */
+    private static boolean actualizarCampoADF(String issueKey, String fieldId, String texto, String nombreLog) {
+        try {
+            ObjectNode doc = mapper.createObjectNode();
+            doc.put("type", "doc").put("version", 1);
+            ArrayNode content = doc.putArray("content");
+            ObjectNode paragraph = content.addObject();
+            paragraph.put("type", "paragraph");
+            ArrayNode pContent = paragraph.putArray("content");
+            pContent.addObject().put("type", "text").put("text", texto); 
+
+            ObjectNode payload = mapper.createObjectNode();
+            payload.putObject("fields").set(fieldId, doc);
+
+            return enviarPutV3(issueKey, payload, nombreLog);
+        } catch (Exception e) { return false; }
+    }
 
     private static void actualizarCampoTexto(String issueKey, String fieldId, String valor, String nombre) {
-        try {
-            ObjectNode payload = mapper.createObjectNode();
-            payload.putObject("fields").put(fieldId, valor);
-            enviarPutV3(issueKey, payload, nombre);
-        } catch (Exception e) {}
+        ObjectNode payload = mapper.createObjectNode();
+        payload.putObject("fields").put(fieldId, valor);
+        enviarPutV3(issueKey, payload, nombre);
     }
 
     private static void actualizarDropdown(String issueKey, String fieldId, String valor, String nombre) {
         if (valor == null || valor.isEmpty()) return;
-        try {
-            ObjectNode payload = mapper.createObjectNode();
-            payload.putObject("fields").putObject(fieldId).put("value", valor.trim());
-            enviarPutV3(issueKey, payload, nombre);
-        } catch (Exception e) {}
+        ObjectNode payload = mapper.createObjectNode();
+        payload.putObject("fields").putObject(fieldId).put("value", valor.trim());
+        enviarPutV3(issueKey, payload, nombre);
     }
 
-    private static void actualizarTiempos(String issueKey, String fGen, String fSol, String tNoDisp) {
-        try {
-            ObjectNode payload = mapper.createObjectNode();
-            ObjectNode fields = payload.putObject("fields");
-            boolean hayDatos = false;
-
-            if (fGen != null && !fGen.contains("1900") && fGen.length() > 5) {
-                fields.put("customfield_10321", formatearFecha(fGen));
-                hayDatos = true;
-            }
-            if (fSol != null && !fSol.contains("1900") && fSol.length() > 5) {
-                fields.put("customfield_10322", formatearFecha(fSol));
-                hayDatos = true;
-            }
-            if (tNoDisp != null && !tNoDisp.isEmpty()) {
-                fields.put("customfield_10178", tNoDisp);
-                hayDatos = true;
-            }
-
-            if (hayDatos) enviarPutV3(issueKey, payload, "Fechas/Tiempos");
-        } catch (Exception e) {}
-    }
-
-    private static void actualizarUbicacion(String issueKey, String dep, String prov, String dist, String dir, 
-                                            String nomIE, String codMod, String codLoc, String medio) {
-        try {
-            ObjectNode payload = mapper.createObjectNode();
-            ObjectNode fields = payload.putObject("fields");
-            putIfNotEmpty(fields, "customfield_10355", dep);
-            putIfNotEmpty(fields, "customfield_10356", prov);
-            putIfNotEmpty(fields, "customfield_10357", dist);
-            putIfNotEmpty(fields, "customfield_10358", dir);
-            putIfNotEmpty(fields, "customfield_10359", nomIE);
-            putIfNotEmpty(fields, "customfield_10169", codMod);
-            putIfNotEmpty(fields, "customfield_10168", codLoc);
-            putIfNotEmpty(fields, "customfield_10361", medio);
-            fields.putObject("customfield_10286").put("value", "Creado por alertas");
-            fields.putObject("customfield_10471").put("value", "Cliente");
-            enviarPutV3(issueKey, payload, "Ubicación");
-        } catch (Exception e) {}
-    }
-
-    private static void agregarComentario(String issueKey, String cuerpo) {
-        try {
-            ObjectNode payload = mapper.createObjectNode();
-            payload.put("body", cuerpo);
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(jiraUrl + "/rest/api/3/issue/" + issueKey + "/comment")) // v3
-                    .header("Authorization", "Basic " + encodedAuth)
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(payload)))
-                    .build();
-            client.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {}
-    }
-
-    // --- ENVIAR PUT (CON API v3 y LOGS) ---
     private static boolean enviarPutV3(String issueKey, ObjectNode payload, String nombreLog) {
         try {
-            // 🚨 CAMBIO CRÍTICO: /rest/api/3/
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(jiraUrl + "/rest/api/3/issue/" + issueKey))
                     .header("Authorization", "Basic " + encodedAuth)
@@ -314,61 +267,78 @@ public class TT {
                     .build();
             
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            
             if (response.statusCode() == 204) {
                 System.out.println("      📝 " + nombreLog + ": OK");
                 return true;
             } else {
-                // AHORA SÍ VEREMOS EL ERROR REAL
                 System.err.println("      ⚠️ Falló " + nombreLog + " (" + response.statusCode() + "): " + response.body());
                 return false;
             }
         } catch (Exception e) { return false; }
     }
 
-    // --- IMÁGENES ---
+    // --- MÉTODOS DE APOYO (FECHAS, UBICACIÓN, IMÁGENES) ---
+
+    private static void actualizarTiempos(String issueKey, String fGen, String fSol, String tNoDisp) {
+        ObjectNode payload = mapper.createObjectNode();
+        ObjectNode fields = payload.putObject("fields");
+        boolean update = false;
+        if (fGen.length() > 5 && !fGen.contains("1900")) { fields.put("customfield_10321", formatearFecha(fGen)); update = true; }
+        if (fSol.length() > 5 && !fSol.contains("1900")) { fields.put("customfield_10322", formatearFecha(fSol)); update = true; }
+        if (!tNoDisp.isEmpty()) { fields.put("customfield_10178", tNoDisp); update = true; }
+        if (update) enviarPutV3(issueKey, payload, "Tiempos");
+    }
+
+    private static void actualizarUbicacion(String issueKey, String dep, String prov, String dist, String dir, String nom, String mod, String loc, String med) {
+        ObjectNode payload = mapper.createObjectNode();
+        ObjectNode f = payload.putObject("fields");
+        putIfNotEmpty(f, "customfield_10355", dep);
+        putIfNotEmpty(f, "customfield_10356", prov);
+        putIfNotEmpty(f, "customfield_10357", dist);
+        putIfNotEmpty(f, "customfield_10358", dir);
+        putIfNotEmpty(f, "customfield_10359", nom);
+        putIfNotEmpty(f, "customfield_10169", mod);
+        putIfNotEmpty(f, "customfield_10168", loc);
+        putIfNotEmpty(f, "customfield_10361", med);
+        f.putObject("customfield_10286").put("value", "Creado por alertas");
+        f.putObject("customfield_10471").put("value", "Cliente");
+        enviarPutV3(issueKey, payload, "Ubicación");
+    }
+
     private static void subirImagenes(String issueKey, String rutas) {
-        String[] paths = rutas.split(",");
-        for (String rutaRaw : paths) {
-            String ruta = rutaRaw.trim();
-            if (ruta.isEmpty()) continue;
-            File file = new File(ruta);
-            if (!file.exists()) { System.err.println("      ⚠️ Imagen no encontrada: " + ruta); continue; }
+        for (String r : rutas.split(",")) {
+            File f = new File(r.trim());
+            if (!f.exists()) continue;
             try {
-                String boundary = "---boundary" + UUID.randomUUID().toString();
-                byte[] fileBytes = Files.readAllBytes(file.toPath());
-                List<byte[]> byteArrays = new ArrayList<>();
-                byteArrays.add(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
-                byteArrays.add(("Content-Disposition: form-data; name=\"file\"; filename=\"" + file.getName() + "\"\r\n").getBytes(StandardCharsets.UTF_8));
-                byteArrays.add(("Content-Type: application/octet-stream\r\n\r\n").getBytes(StandardCharsets.UTF_8));
-                byteArrays.add(fileBytes);
-                byteArrays.add(("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
-                int totalLength = byteArrays.stream().mapToInt(b -> b.length).sum();
-                byte[] multipartBody = new byte[totalLength];
-                int currentPos = 0;
-                for (byte[] b : byteArrays) { System.arraycopy(b, 0, multipartBody, currentPos, b.length); currentPos += b.length; }
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(jiraUrl + "/rest/api/3/issue/" + issueKey + "/attachments")) // v3
+                String boundary = "---" + UUID.randomUUID();
+                byte[] body = createMultipartBody(f, boundary);
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(jiraUrl + "/rest/api/3/issue/" + issueKey + "/attachments"))
                         .header("Authorization", "Basic " + encodedAuth)
                         .header("X-Atlassian-Token", "no-check")
                         .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-                        .POST(HttpRequest.BodyPublishers.ofByteArray(multipartBody))
+                        .POST(HttpRequest.BodyPublishers.ofByteArray(body))
                         .build();
-                if (client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode() == 200) 
-                    System.out.println("      📸 Imagen subida: " + file.getName());
+                if (client.send(req, HttpResponse.BodyHandlers.ofString()).statusCode() == 200)
+                    System.out.println("      📸 Imagen cargada: " + f.getName());
             } catch (Exception e) {}
         }
     }
 
-    // --- HELPERS ---
-    private static String[] obtenerConfiguracionItem(String numeroItem) {
-        switch (numeroItem) {
-            case "1": return new String[]{"126", "customfield_10250"};
-            case "2": return new String[]{"127", "customfield_10251"};
-            case "3": return new String[]{"128", "customfield_10252"};
-            case "4": return new String[]{"129", "customfield_10253"};
-            default:  return new String[]{"129", "customfield_10253"};
-        }
+    // --- UTILIDADES ---
+
+    private static byte[] createMultipartBody(File file, String boundary) throws Exception {
+        String header = "--" + boundary + "\r\n" +
+                        "Content-Disposition: form-data; name=\"file\"; filename=\"" + file.getName() + "\"\r\n" +
+                        "Content-Type: application/octet-stream\r\n\r\n";
+        byte[] h = header.getBytes(StandardCharsets.UTF_8);
+        byte[] f = Files.readAllBytes(file.toPath());
+        byte[] t = ("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8);
+        byte[] res = new byte[h.length + f.length + t.length];
+        System.arraycopy(h, 0, res, 0, h.length);
+        System.arraycopy(f, 0, res, h.length, f.length);
+        System.arraycopy(t, 0, res, h.length + f.length, t.length);
+        return res;
     }
 
     private static void agregarActivo(ObjectNode values, String fieldId, String wsId, String objId) {
@@ -378,23 +348,22 @@ public class TT {
         assetObj.put("id", wsId + ":" + objId);
         assetObj.put("objectId", objId);
     }
-    
+
     private static String extraerSoloNumeros(String input) {
         if (input == null) return "";
         Matcher m = Pattern.compile("\\d+").matcher(input);
         return m.find() ? m.group() : "";
     }
 
-    private static String formatearFecha(String fechaExcel) {
-        if (fechaExcel.contains("T") && fechaExcel.contains("-0500")) return fechaExcel;
-        try { return fechaExcel.replace(" ", "T") + ".000-0500"; } catch (Exception e) { return fechaExcel; }
+    private static String formatearFecha(String f) {
+        if (f.contains("T")) return f;
+        return f.replace(" ", "T") + ".000-0500";
     }
 
     private static String getCellValue(Row row, int index) {
         Cell cell = row.getCell(index);
         if (cell == null) return "";
-        DataFormatter formatter = new DataFormatter();
-        return formatter.formatCellValue(cell).trim();
+        return new DataFormatter().formatCellValue(cell).trim();
     }
     
     private static void putIfNotEmpty(ObjectNode fields, String key, String value) {

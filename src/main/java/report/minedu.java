@@ -36,129 +36,85 @@ import java.io.IOException;
 import org.openqa.selenium.JavascriptExecutor;
 
 
-
-
 public class minedu {
-	
 
-	public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException {
 
-//		
-	
-		Controller controller=new Controller();
-	    int[] columnasDeseadas = {0,1,2,3,4,5};
-	    String RutaExcelFinal = "src/main/resources/";
-	    String ITEM=controller.ElegirITEM();
-	    String NombreExcel="Excel_"+ITEM+".xlsx";
+        Controller controller = new Controller();
+        int[] columnasDeseadas = {0, 1, 2, 3, 4, 5};
+        String RutaExcelFinal = "src/main/resources/";
+        String ITEM = controller.ElegirITEM();
+        String NombreExcel = "Excel_" + ITEM + ".xlsx";
         int n = 0;
-        System.out.println(NombreExcel);
         
-	    //Elegir el nombre del excel por ITEM
-	    
-	    
-	    ///VARIABLE DE LOS ENCABEZADOS DEL EXCEL 
-	    // --- C MO USAR LOS DATOS EN EL BUCLE ---
-        //
-        String Numero;    
-        String codigo_local;
-        String CID;    
-        String NomLLEE;
-        String Departamento;
-        String Provincia;
-        String Distrito;     
-        String Peak_Receive;
-        String Minimum_Receive;
-        String Average_Receive;
-        String Peak_Transmit;
-        String Minimum_Transmit;
-        String Average_Transmit;
-        String Ancho_de_banda;
-       
-        
-               
-       //PARA REDUCIR EL MENU
+        // ... Variables de encabezados ...
+        String codigo_local, CID, NomLLEE, Departamento, Provincia, Distrito;
         boolean menuReducido = false;
-	  //leer excel los pendientes   
-        
-        
-        
-        List<List<String>> misDatos = ExcelController.leerColumnasEspecificas(RutaExcelFinal+NombreExcel, columnasDeseadas);
-        
-        
-     //escoger el link para las graficas 
-       String fechaini=controller.ElegirFechaIni();
-       String  fechafin=controller.ElegirFechaFinal();
+
+        List<List<String>> misDatos = ExcelController.leerColumnasEspecificas(RutaExcelFinal + NombreExcel, columnasDeseadas);
+        String fechaini = controller.ElegirFechaIni();
+        String fechafin = controller.ElegirFechaFinal();
+
+        // Inicializamos el driver FUERA del bucle y del try principal
+        WebController webController = new WebController();
+        WebDriver driver = webController.GraficaAnchoBancha();
+
+        // -------------------------FOR PRINCIPAL---------------------------------------
+        for (List<String> fila : misDatos) {
             
-        try {
-        	WebController  webController=new WebController();
-        	WebDriver driver = webController.GraficaAnchoBancha();           
-           // -------------------------FOR---------------------------------------
-            for (List<String> fila : misDatos) {
-            	 
-            	WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
-            	
-                codigo_local = fila.get(0);             
-                CID=fila.get(1);
-                NomLLEE=fila.get(2);
-                Departamento=fila.get(3);
-                Provincia=fila.get(4);
-                Distrito=fila.get(5); 
-                n = n + 1; // Ahora funcionar  sin errores
-                if(codigo_local.matches("[\\d\\.]+")) { 
-                String url=WebController.ElegirURL(fechaini, fechafin,ITEM, codigo_local, CID,driver);
-                Thread.sleep(1000); 
-                
-                System.out.println(url);
-   
-		        driver.get(url);
+            // EL TRY DEBE EMPEZAR AQUÍ PARA QUE EL BUCLE SEA RESILIENTE
+            try {
+                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
 
-       	        System.out.println("SE VISUALIZA LA FRAFICA .......");
+                codigo_local = fila.get(0);
+                CID = fila.get(1);
+                NomLLEE = fila.get(2);
+                Departamento = fila.get(3);
+                Provincia = fila.get(4);
+                Distrito = fila.get(5);
                 
-               Thread.sleep(3000); 
-        //RETRAER EL MENU VERTICAL------------------
-               Thread.sleep(3000); 
-            // 2. Solo entrará aquí en la primera iteración
-               if (!menuReducido) {
-                   WebController.colapsarMenuGrafana(driver);
-                   menuReducido = true; // Cambiamos a true para que no vuelva a entrar
-               }
-               
-        //----------------------------------------------
-                //marcar y desmarcar 
-                      // 1. Localizar los elementos (ajusta los selectores a tu p gina)
-                
-          //TOMAR DATOS DE LA GRAFICA PARA EL EXCEL 
-                
-         
-                // 2. INYECTAR FECHA EN DOM (Usa el método agregarFechaFinal que corregimos antes)
-                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM HH:mm");
-                String fechaActual = dtf.format(LocalDateTime.now());
+                n++; // Contador
 
-                // 3. CAPTURAR DATOS NUMÉRICOS (¡NUEVO!)
-                Map<String, String> datosCapturados = WebController.capturarDatosGrafica(driver);
+                if (codigo_local.matches("[\\d\\.]+")) {
+                    System.out.println("--- Procesando Item " + n + ": " + codigo_local + " ---");
+                    
+                    String url = WebController.ElegirURL(fechaini, fechafin, ITEM, codigo_local, CID, driver);
+                    
+                    driver.get(url);
+                    Thread.sleep(3000); // Espera carga inicial
 
-                // 4. GUARDAR EN EXCEL (¡NUEVO!)
-               
-               ExcelController.escribirExcelResultados(Departamento, Provincia,Distrito ,ITEM,codigo_local, NomLLEE, CID, RutaExcelFinal+"excel/ITEM"+ITEM+"/Resultados_Grafana_"+ITEM+".xlsx", datosCapturados);
-                
-                
-          //-------------------------------------------------------------------
-           //TOMAR CAPTURA DE LA IMAGENES 
-                
-               WebController.TomadeCapturaGurardado(driver, codigo_local,ITEM); 
-              
-            	  }else {
-            		  
-            		  System.out.println("SE ESTA PRSEANDO EL ENCABEZADO SE PASARA LA SIGUINTE FILA");
-                        
-            	  } 
-          }
-            	
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        
-	}
+                    // Retraer menú solo la primera vez
+                    if (!menuReducido) {
+                        WebController.colapsarMenuGrafana(driver);
+                        menuReducido = true;
+                    }
 
-	
+                    // 1. Capturar datos numéricos (Try/Catch interno en WebController, no detendrá el flujo)
+                    Map<String, String> datosCapturados = WebController.capturarDatosGrafica(driver);
+
+                    // 2. Guardar Excel
+                    ExcelController.escribirExcelResultados(Departamento, Provincia, Distrito, ITEM, codigo_local, NomLLEE, CID, RutaExcelFinal + "excel/ITEM" + ITEM + "/Resultados_Grafana_" + ITEM + ".xlsx", datosCapturados);
+
+                    // 3. TOMAR CAPTURA (Aquí usamos el nuevo método blindado)
+                    WebController.TomadeCapturaGurardado(driver, codigo_local, ITEM);
+
+                } else {
+                    System.out.println("Fila de encabezado o vacía detectada, saltando...");
+                }
+
+            } catch (Exception e) {
+                // AQUÍ CAPTURAMOS CUALQUIER ERROR DE ESTA ITERACIÓN ESPECÍFICA
+                System.out.println("❌ ERROR PROCESANDO EL CÓDIGO LOCAL: " + fila.get(0));
+                e.printStackTrace();
+                System.out.println("🔄 Continuando con el siguiente elemento...");
+                
+                // Opcional: Tomar una captura de pantalla del error si quieres ver qué pasó
+                // WebController.tomarCapturaElemento(driver, "ERROR_CRITICO_" + fila.get(0), ITEM);
+            }
+        } // FIN DEL FOR
+
+        // Cerrar driver al final de todo
+        System.out.println("Proceso finalizado.");
+        // driver.quit(); 
+    }
 }

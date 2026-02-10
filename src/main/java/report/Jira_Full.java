@@ -154,7 +154,7 @@ public class Jira_Full {
 
             for (int i = 0; i < encabezados.length; i++) sheet.autoSizeColumn(i);
 
-            try (FileOutputStream fileOut = new FileOutputStream("Reporte_Jira_Minedu_"+"05-02-20206"+".xlsx")) {
+            try (FileOutputStream fileOut = new FileOutputStream("Reporte_Jira_Minedu_"+"10-02-20206"+".xlsx")) {
                 workbook.write(fileOut);
             }
             workbook.close();

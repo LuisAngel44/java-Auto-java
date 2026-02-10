@@ -45,6 +45,8 @@ public class EnvioMasivoWhatsApp {
 
             // Recorrer filas (asumiendo que la fila 0 es el encabezado, empezamos en 1)
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            	Thread.sleep(3000); // Esperar que se actualice la gráfica
+            	System.out.print("tiempo de espera para que whatapp no se dee cuenta  \n");
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
                 
