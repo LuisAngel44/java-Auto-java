@@ -26,6 +26,8 @@
 
 }
 
+
+
 .tab-blue { -fx-border-color: #3b82f6; -fx-border-width: 0 0 4 0; }
 .tab-yellow { -fx-border-color: #facc15; -fx-border-width: 0 0 4 0; }
 .tab-magenta { -fx-border-color: #d946ef; -fx-border-width: 0 0 4 0; }
@@ -45,7 +47,10 @@
 }
 .card-cyan { -fx-border-color: #06b6d4; -fx-border-width: 2; }
 .card-magenta { -fx-border-color: #d946ef; -fx-border-width: 2; }
-
+.card-yellow { -fx-border-color: #F5EB27; -fx-border-width: 2; }
+.card-orange{ -fx-border-color: #EB4C02; -fx-border-width: 2;}
+.card-red{ -fx-border-color: #FF0000; -fx-border-width: 2;}
+.card-green{ -fx-border-color:  #35f527; -fx-border-width: 2;}
 /* --- COMPONENTES DE FORMULARIO --- */
 .text-field, .date-picker .text-field {
     -fx-background-color: #374151;
@@ -127,4 +132,30 @@
 .close-button:hover {
     -fx-background-color: #e81123; /* Rojo estándar de Windows moderno */
     -fx-text-fill: white;
+}
+
+/* Centrar las pestañas del TabPane sin afectar estilos existentes */
+.tab-pane .tab-header-area {
+    -fx-alignment: center;
+    -fx-padding: 0 0 0 0;
+    -fx-max-width: 100%;
+    -fx-min-width: 100%;
+    -fx-pref-width: 100%;
+}
+
+/* Restaurar visibilidad de las pestañas del TabPane */
+.tab-pane .tab-header-area {
+    -fx-opacity: 1; /* Asegurar que el área de encabezado sea visible */
+    -fx-background-color: transparent; /* Fondo transparente para mantener diseño */
+}
+
+.tab-pane .tab-header-area .tab {
+    -fx-background-color: rgb(94, 108, 162); /* Restaurar color de fondo */
+    -fx-text-fill: #ffffff; /* Texto blanco para contraste */
+    -fx-padding: 10 20; /* Restaurar espaciado */
+}
+
+.tab-pane .tab-header-area .tab:selected {
+    -fx-background-color: #929596; /* Color para pestaña seleccionada */
+    -fx-text-fill: #ffffff; /* Texto blanco para pestaña seleccionada */
 }

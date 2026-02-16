@@ -154,11 +154,15 @@ public class Jira_Full {
 
             for (int i = 0; i < encabezados.length; i++) sheet.autoSizeColumn(i);
 
-            try (FileOutputStream fileOut = new FileOutputStream("Reporte_Jira_Minedu_"+"10-02-20206"+".xlsx")) {
+            // Obtener fecha y hora actual para el nombre del archivo
+            String fechaHora = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String nombreArchivo = "Reporte_Jira_Minedu_" + fechaHora + ".xlsx";
+
+            try (FileOutputStream fileOut = new FileOutputStream(nombreArchivo)) {
                 workbook.write(fileOut);
             }
             workbook.close();
-            System.out.println("\n🎉 ¡Excel generado con éxito!");
+            System.out.println("\n🎉 ¡Excel generado con éxito! Nombre: " + nombreArchivo);
 
         } catch (Exception e) {
             e.printStackTrace();

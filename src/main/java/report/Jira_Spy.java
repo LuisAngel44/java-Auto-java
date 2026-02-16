@@ -23,7 +23,7 @@ public class Jira_Spy {
         String email = dotenv.get("JIRA_EMAIL").trim();
         String token = dotenv.get("JIRA_TOKEN").trim();  
         // EL TICKET MODELO QUE QUEREMOS COPIAR (Sacado de tu imagen)
-        String ticketToSpy = "MSP-37786"; 
+        String ticketToSpy = "MSP-39469"; 
 
         String auth = email + ":" + token;
         String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
