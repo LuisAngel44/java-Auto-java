@@ -5,7 +5,7 @@ public class Main {
     	// En tu método start:
    
        //AppLauncher.main(args);
-       tabs.main(args);
+      // tabs.main(args);
     }
 }
 
