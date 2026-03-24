@@ -23,7 +23,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class TTUP {
+public class ZZUPZZZ {
 
     // --- CONFIGURACIÓN DE JIRA ---
     static final String WORKSPACE_ID = "01cf423f-729d-4ecc-9da9-3df244069bb5";
@@ -37,6 +37,7 @@ public class TTUP {
     static final String FIELD_FECHA_GEN = "customfield_10321";
     static final String FIELD_FECHA_SOL = "customfield_10322";
     static final String FIELD_TIEMPO_SOLUCION = "customfield_10177";
+    static final String FIELD_IMPUTABILIDAD = "customfield_10471"; // <-- CAMPO AÑADIDO
 
     // ÍNDICES DE COLUMNAS EXCEL (Sincronizado con TTT)
     static final int COL_RESUMEN = 0, COL_DESC = 1, COL_COLEGIO = 2, COL_DISPOSITIVO = 3;
@@ -48,8 +49,9 @@ public class TTUP {
     static final int COL_ITEM = 20, COL_SOLUCION = 21, COL_RUTAS_IMG = 22, COL_AREA = 23;
     static final int COL_CAUSA_RAIZ = 24, COL_CAT_SERVICIO = 25;
 
-    // COLUMNA CLAVE PARA LA ACTUALIZACIÓN
+    // COLUMNAS CLAVE PARA LA ACTUALIZACIÓN
     static final int COL_TICKET_KEY = 26;
+    static final int COL_IMPUTABILIDAD = 27; // <-- ÍNDICE AÑADIDO
 
     static String jiraUrl;
     static String encodedAuth;
@@ -71,9 +73,9 @@ public class TTUP {
         mapper = new ObjectMapper();
         client = HttpClient.newHttpClient();
 
-        System.out.println(">>> 🚀 INICIANDO ACTUALIZACIÓN MASIVA (Versión Definitiva) <<<");
+        System.out.println(">>> 🚀 INICIANDO ACTUALIZACIÓN MASIVA (Versión Definitiva con Imputabilidad) <<<");
 
-        try (FileInputStream file = new FileInputStream(new File("iT3m3.xlsx"));
+        try (FileInputStream file = new FileInputStream(new File("iT1m4.xlsx"));
              Workbook workbook = new XSSFWorkbook(file)) {
 
             Sheet sheet = workbook.getSheetAt(0);
@@ -123,14 +125,13 @@ public class TTUP {
                             }
                         }
 
-                        // 4) Cambio de estado y post-actualización
+                        // 4) Cambio de estado y post-actualización (CORREGIDO)
                         String fechaSol = getValRobust(row, COL_FECHA_SOL_IDX, formatter);
                         String textoSolucion = getValRobust(row, COL_SOLUCION, formatter);
 
                         if (!fechaSol.isEmpty() && (!textoSolucion.isEmpty() || !nombresImagenesSubidas.isEmpty())) {
-                            System.out.println("   🔄 Cambiando estado a 'Resuelta'...");
-                            cambiarEstadoTicket(issueKey, "Resuelta");
-
+                            
+                            // 1ro: PRE-RESOLUCIÓN - Forzar las fechas mientras el ticket sigue abierto/editable
                             ObjectNode finalPayload = mapper.createObjectNode();
                             ObjectNode fFields = finalPayload.putObject("fields");
 
@@ -140,7 +141,11 @@ public class TTUP {
                             String tSol = getValRobust(row, COL_TIEMPO_SOLUCION, formatter);
                             if (!tSol.isEmpty()) fFields.put(FIELD_TIEMPO_SOLUCION, tSol);
 
-                            enviarPutV2(issueKey, finalPayload, "Post-Resolución (Fechas y Tiempo forzados)");
+                            enviarPutV2(issueKey, finalPayload, "Pre-Resolución (Fechas y Tiempo forzados)");
+
+                            // 2do: RESOLUCIÓN - Cambiamos el estado a 'Resuelta'
+                            System.out.println("   🔄 Cambiando estado a 'Resuelta'...");
+                            cambiarEstadoTicket(issueKey, "Resuelta");
                         }
 
                         exitosos++;
@@ -185,10 +190,12 @@ public class TTUP {
         String catServicio = getValRobust(row, COL_CAT_SERVICIO, fmt);
         String causaRaiz = getValRobust(row, COL_CAUSA_RAIZ, fmt);
         String area = getValRobust(row, COL_AREA, fmt);
+        String imputabilidad = getValRobust(row, COL_IMPUTABILIDAD, fmt); // <-- EXTRACCIÓN AÑADIDA
 
         if (!catServicio.isEmpty()) fields.putObject(FIELD_CATEGORIA).put("value", catServicio.trim());
         if (!causaRaiz.isEmpty()) fields.putObject(FIELD_CAUSA_RAIZ).put("value", causaRaiz.trim());
         if (!area.isEmpty()) fields.putObject("customfield_10504").put("value", area.equalsIgnoreCase("Urbana") ? "Urbana" : "Rural");
+        if (!imputabilidad.isEmpty()) fields.putObject(FIELD_IMPUTABILIDAD).put("value", imputabilidad.trim()); // <-- INYECCIÓN AÑADIDA
 
         String fGen = formatearParaJira(getValRobust(row, COL_FECHA_GEN_IDX, fmt));
         String tNoDisp = getValRobust(row, COL_TIEMPO_NODISP, fmt);

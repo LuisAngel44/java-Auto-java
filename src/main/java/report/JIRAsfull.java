@@ -17,15 +17,11 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.Scanner; // Import necesario para leer el teclado
 
-/**
- * Clase principal para generar un reporte de	 Jira y exportarlo a un archivo Excel.
- * Se conecta a la API de Jira, obtiene los tickets basados en una consulta JQL,
- * extrae los campos personalizados y genera un archivo .xlsx con los resultados.
- */
-public class Jira_Full {
+public class JIRAsfull {
 
-    // Definición de IDs de campos personalizados (Custom Fields) de Jira
+    // IDs de Campos
     private static final String ID_COD_LOCAL       = "customfield_10168";
     private static final String ID_COD_MODULAR     = "customfield_10169";
     private static final String ID_NOMBRE_IE       = "customfield_10359";
@@ -40,29 +36,35 @@ public class Jira_Full {
     private static final String ID_DESCRIP_SOLUCION= "customfield_10089";
     private static final String ID_MEDIO_TX        = "customfield_10361";
     private static final String ID_TIEMPO_NO_DISP  = "customfield_10178";
-    
-    // ✅ CAMBIO REALIZADO: ID correcto para la fecha manual de generación
     private static final String ID_FECHA_REPORTE_MANUAL = "customfield_10321"; 
 
     public static void main(String[] args) {
-        // Carga de variables de entorno desde el archivo .env
+        // --- NUEVO: Solicitar fecha al usuario ---
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("📅 Por favor, ingresa la fecha a extraer (Formato YYYY-MM-DD):");
+        System.out.println("   Ejemplo: 2026-02-02");
+        System.out.print(">> ");
+        String fechaTarget = scanner.nextLine().trim();
+        
+        // Validación simple
+        if (!fechaTarget.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            System.err.println("❌ Formato de fecha incorrecto. Debe ser YYYY-MM-DD");
+            return;
+        }
+        // -----------------------------------------
+
         Dotenv dotenv = Dotenv.load();
         String jiraUrl = dotenv.get("JIRA_URL").trim().replaceAll("/$", "");
         String email = dotenv.get("JIRA_EMAIL").trim();
         String token = dotenv.get("JIRA_TOKEN").trim();
-        
-        // Codificación de credenciales en Base64 para autenticación Basic
         String encodedAuth = Base64.getEncoder().encodeToString((email + ":" + token).getBytes());
 
-        // Inicialización de herramientas JSON y cliente HTTP
         ObjectMapper mapper = new ObjectMapper();
         HttpClient client = HttpClient.newHttpClient();
 
-        // Creación del libro de Excel y la hoja principal
         Workbook workbook = new XSSFWorkbook();
-        Sheet sheet = workbook.createSheet("Reporte Bitel Minedu");
+        Sheet sheet = workbook.createSheet("Reporte " + fechaTarget); // Nombre de hoja con fecha
 
-        // Definición de los encabezados de las columnas del reporte
         String[] encabezados = {
             "Código de Local", "Código Modular", "Nombre de la IE", "Departamento", 
             "Provincia", "Distrito", "Nombre de Contacto", "Número de Contacto", 
@@ -71,7 +73,6 @@ public class Jira_Full {
             "Descripción de la solución", "Tiempo solución", "Tiempo de no disponibilidad", "Medio de transmisión"
         };
 
-        // Creación de la fila de encabezados y aplicación de estilos (negrita)
         Row headerRow = sheet.createRow(0);
         CellStyle headerStyle = workbook.createCellStyle();
         Font font = workbook.createFont();
@@ -84,24 +85,31 @@ public class Jira_Full {
             cell.setCellStyle(headerStyle);
         }
 
-        // Variables para el control de paginación de la API de Jira
         String nextPageToken = null;
         boolean seguirBuscando = true;
         int filaActual = 1;
         int totalIssues = 0;
 
-        System.out.println("🚀 Iniciando generación de reporte...");
+        System.out.println("🚀 Iniciando extracción del día: " + fechaTarget + " (00:00 a 23:59)...");
+
+        // --- NUEVO: Construcción del JQL filtrado por fecha ---
+        // Filtra creados >= fecha 00:00 Y creados <= fecha 23:59
+        String jqlQuery = String.format(
+            "project = 'MSP' AND created >= '%s 00:00' AND created <= '%s 23:59' ORDER BY created DESC",
+            fechaTarget, fechaTarget
+        );
+        // -----------------------------------------------------
 
         try {
-            // Bucle para obtener todos los tickets paginados
             while (seguirBuscando) {
-                // Construcción del payload JSON para la consulta JQL
                 ObjectNode payload = mapper.createObjectNode();
-                payload.put("jql", "project = 'MSP' ORDER BY created DESC");
-                payload.put("maxResults", 100); // Límite de resultados por página
+                
+                // Usamos la query dinámica aquí
+                payload.put("jql", jqlQuery);
+                
+                payload.put("maxResults", 100);
                 if (nextPageToken != null) payload.put("nextPageToken", nextPageToken);
 
-                // Especificación de los campos exactos a recuperar para optimizar la respuesta
                 ArrayNode fields = payload.putArray("fields");
                 fields.add("summary").add("status").add("created").add("resolutiondate")
                       .add(ID_COD_LOCAL).add(ID_COD_MODULAR).add(ID_NOMBRE_IE)
@@ -109,11 +117,9 @@ public class Jira_Full {
                       .add(ID_NOMBRE_CONTACTO).add(ID_NUMERO_CONTACTO)
                       .add(ID_ITEM).add(ID_TIPO_INCIDENCIA).add(ID_DESCRIP_INCIDENTE)
                       .add(ID_DESCRIP_SOLUCION).add(ID_MEDIO_TX).add(ID_TIEMPO_NO_DISP)
-                      .add(ID_FECHA_REPORTE_MANUAL); // Solicitamos el campo manual
+                      .add(ID_FECHA_REPORTE_MANUAL);
 
                 String jsonBody = mapper.writeValueAsString(payload);
-                
-                // Configuración de la petición HTTP POST
                 HttpRequest request = HttpRequest.newBuilder()
                         .uri(URI.create(jiraUrl + "/rest/api/3/search/jql"))
                         .header("Authorization", "Basic " + encodedAuth)
@@ -121,73 +127,62 @@ public class Jira_Full {
                         .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                         .build();
 
-                // Envío de la petición y recepción de la respuesta
                 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
                 if (response.statusCode() == 200) {
-                    // Procesamiento del JSON de respuesta
                     JsonNode root = mapper.readTree(response.body());
                     JsonNode issues = root.path("issues");
                     totalIssues = root.path("total").asInt();
 
-                    // Si no hay más tickets, salir del bucle
-                    if (issues.isEmpty()) break;
+                    if (issues.isEmpty()) {
+                        // Si no hay issues en la primera vuelta, avisar
+                        if (filaActual == 1) System.out.println("⚠️ No se encontraron tickets para la fecha " + fechaTarget);
+                        break;
+                    }
 
-                    // Iteración sobre cada ticket recuperado
                     for (JsonNode issue : issues) {
                         JsonNode f = issue.path("fields");
                         Row row = sheet.createRow(filaActual++);
 
-                        // Llenado de celdas con los datos extraídos
                         row.createCell(0).setCellValue(obtenerTexto(f.path(ID_COD_LOCAL)));
                         row.createCell(1).setCellValue(obtenerTexto(f.path(ID_COD_MODULAR)));
                         row.createCell(2).setCellValue(obtenerTexto(f.path(ID_NOMBRE_IE)));
                         row.createCell(3).setCellValue(obtenerTexto(f.path(ID_DEPARTAMENTO)));
                         row.createCell(4).setCellValue(obtenerTexto(f.path(ID_PROVINCIA)));
                         row.createCell(5).setCellValue(obtenerTexto(f.path(ID_DISTRITO)));
-                        row.createCell(6).setCellValue(obtenerTexto(f.path(ID_NOMBRE_CONTACTO)));	
+                        row.createCell(6).setCellValue(obtenerTexto(f.path(ID_NOMBRE_CONTACTO)));
                         row.createCell(7).setCellValue(obtenerTexto(f.path(ID_NUMERO_CONTACTO)));
                         row.createCell(8).setCellValue(obtenerTexto(f.path(ID_ITEM))); 
                         row.createCell(9).setCellValue(issue.path("key").asText());
                         row.createCell(10).setCellValue(obtenerTexto(f.path(ID_TIPO_INCIDENCIA)));
                         row.createCell(11).setCellValue(f.path("status").path("name").asText());
                         
-                        // Extracción especial para campos de texto enriquecido (ADF)
                         row.createCell(12).setCellValue(extraerTextoADF(f.path(ID_DESCRIP_INCIDENTE)));
                         
-                        // --- LÓGICA DE FECHAS (PRIORIDAD REPORTE MANUAL) ---
                         String fechaSistema = f.path("created").asText();
                         String fechaReporte = f.path(ID_FECHA_REPORTE_MANUAL).asText();
                         
-                        // Si existe fecha manual, la usa. Si no, usa la del sistema.
                         String fechaUso = (fechaReporte != null && !fechaReporte.equals("null") && !fechaReporte.isEmpty()) 
                                           ? fechaReporte 
                                           : fechaSistema;
 
                         String fechaSolucion = f.path("resolutiondate").asText(null);
                         
-                        // Celda 13: Fecha Generación (Usando la manual si existe)
                         row.createCell(13).setCellValue(formatearFecha(fechaUso)); 
                         row.createCell(14).setCellValue(formatearFecha(fechaSolucion));
-                        // ----------------------------------------------------
 
                         row.createCell(15).setCellValue(obtenerTexto(f.path(ID_DESCRIP_SOLUCION)));
-                        
-                        // Cálculo de tiempo usando la fecha elegida (Reporte o Sistema) vs Solución
                         row.createCell(16).setCellValue(calcularTiempo(fechaUso, fechaSolucion));
-                        
                         row.createCell(17).setCellValue(obtenerTexto(f.path(ID_TIEMPO_NO_DISP)));
                         row.createCell(18).setCellValue(obtenerTexto(f.path(ID_MEDIO_TX)));
 
-                        // Actualización de la barra de progreso en consola
                         mostrarProgreso(filaActual - 1, totalIssues);
                     }
 
-                    // Verificación de token para la siguiente página
                     if (root.has("nextPageToken")) {
                         nextPageToken = root.get("nextPageToken").asText();
                     } else {
-                        seguirBuscando = false; // Fin de la paginación
+                        seguirBuscando = false;
                     }
                 } else {
                     System.err.println("❌ Error: " + response.body());
@@ -195,31 +190,30 @@ public class Jira_Full {
                 }
             }
 
-            // Ajuste automático del ancho de las columnas en el Excel
             for (int i = 0; i < encabezados.length; i++) sheet.autoSizeColumn(i);
 
-            // Generación del nombre del archivo con marca de tiempo
-            String fechaHora = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String nombreArchivo = "Reporte_Jira_Minedu_" + fechaHora + ".xlsx";
+            // --- NUEVO: Nombre de archivo con la fecha del filtro ---
+            String fechaHora = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HHmmss"));
+            String nombreArchivo = "Reporte_Jira_Minedu_" + fechaTarget + "_" + fechaHora + ".xlsx";
+            // --------------------------------------------------------
 
-            // Guardado del archivo Excel en el disco
             try (FileOutputStream fileOut = new FileOutputStream(nombreArchivo)) {
                 workbook.write(fileOut);
             }
             workbook.close();
-            System.out.println("\n🎉 ¡Excel generado con éxito! Nombre: " + nombreArchivo);
+            
+            if (totalIssues > 0) {
+                System.out.println("\n🎉 ¡Excel generado con éxito! (" + (filaActual - 1) + " tickets)");
+                System.out.println("📂 Archivo: " + nombreArchivo);
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    // --- MÉTODOS AUXILIARES ---
+    // --- MÉTODOS AUXILIARES (Sin Cambios) ---
 
-    /**
-     * Extrae texto plano de un nodo JSON formateado en Atlassian Document Format (ADF).
-     * Jira API v3 utiliza ADF para campos de texto enriquecido.
-     */
     private static String extraerTextoADF(JsonNode node) {
         if (node.isMissingNode() || node.isNull()) return "";
         StringBuilder sb = new StringBuilder();
@@ -230,20 +224,17 @@ public class Jira_Full {
                     if (item.has("text")) {
                         sb.append(item.get("text").asText());
                     } else if ("hardBreak".equals(item.path("type").asText())) {
-                        sb.append("\n"); // Manejo de saltos de línea
+                        sb.append("\n");
                     }
                 }
                 sb.append("\n");
             }
         } catch (Exception e) {
-            return node.toString(); // Retorna el JSON crudo si falla el parseo
+            return node.toString(); 
         }
         return sb.toString().trim();
     }
 
-    /**
-     * Muestra una barra de progreso dinámica en la consola.
-     */
     private static void mostrarProgreso(int actual, int total) {
         int width = 50; 
         double porcentaje = (double) actual / total;
@@ -258,14 +249,8 @@ public class Jira_Full {
         System.out.print(bar.toString());
     }
 
-    /**
-     * Extrae de forma segura el texto de diferentes estructuras de nodos JSON 
-     * (objetos con 'value', arrays, o texto simple).
-     */
     private static String obtenerTexto(JsonNode node) {
         if (node.isMissingNode() || node.isNull()) return "";
-        
-        // Manejo de objetos anidados (ej. listas desplegables en cascada)
         if (node.has("value")) {
             String val = node.get("value").asText();
             if (node.has("child") && node.get("child").has("value")) {
@@ -273,8 +258,6 @@ public class Jira_Full {
             }
             return val;
         }
-        
-        // Manejo de arrays (ej. campos de selección múltiple)
         if (node.isArray()) {
             StringBuilder sb = new StringBuilder();
             for (JsonNode n : node) {
@@ -283,46 +266,32 @@ public class Jira_Full {
             }
             return sb.toString();
         }
-        
-        // Retorno por defecto para texto simple
         return node.asText("");
     }
 
-    /**
-     * Calcula la diferencia de tiempo entre la fecha de inicio y la fecha de solución.
-     * Retorna el formato "Xh Ym".
-     */
     private static String calcularTiempo(String startStr, String endStr) {
         if (startStr == null || endStr == null || endStr.isEmpty() || endStr.equals("null")) return "En curso";
         try {
-            // Intenta leer formato ISO (usado por Jira System)
             ZonedDateTime start = ZonedDateTime.parse(startStr, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
             ZonedDateTime end = ZonedDateTime.parse(endStr, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
             Duration duration = Duration.between(start, end);
             return String.format("%dh %dm", duration.toHours(), duration.toMinutesPart());
         } catch (Exception e) {
-            // Si falla (probablemente porque es fecha manual sin hora exacta o formato diferente), retorna "-"
-            // Opcional: Agregar lógica para calcular tiempo con fechas simples si es necesario.
             return "-";
         }
     }
 
-    /**
-     * Formatea fechas ISO complejas o fechas simples a un formato legible (dd/MM/yyyy HH:mm).
-     */
     private static String formatearFecha(String dateStr) {
         if (dateStr == null || dateStr.isEmpty() || dateStr.equals("null")) return "";
         try {
-            // Intenta parsear formato ISO completo de Jira
             ZonedDateTime zdt = ZonedDateTime.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
             return zdt.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
         } catch (Exception e) {
-            // Si es fecha simple (yyyy-MM-dd) del campo manual
             try {
                  java.time.LocalDate ld = java.time.LocalDate.parse(dateStr);
                  return ld.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " 00:00";
             } catch (Exception ex) {
-                return dateStr; // Retorna tal cual si falla todo
+                return dateStr;
             }
         }
     }

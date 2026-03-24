@@ -6,7 +6,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.streaming.SXSSFWorkbook; // Importante: Cambiado a SXSSF
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 
 import java.io.FileOutputStream;
 import java.net.URI;
@@ -19,7 +20,15 @@ import java.util.Base64;
 
 public class fulljira {
 
-    // MAPA DE CAMPOS SEGÚN MSP-22605
+    // === CONFIGURACIÓN DE CAMPOS ===
+    // Campos Estándar de Jira (No requieren ID numérico)
+    // summary, status, priority, issuetype, reporter, assignee, created, resolutiondate
+    
+    // Campos Personalizados (IDs extraídos de tu análisis)
+    private static final String ID_ORGANIZACION    = "customfield_10002";
+    private static final String ID_PRIMERA_RESP    = "customfield_10025"; 
+    
+    // Ubicación y Datos IE
     private static final String ID_COD_LOCAL       = "customfield_10168";
     private static final String ID_COD_MODULAR     = "customfield_10169";
     private static final String ID_NOMBRE_IE       = "customfield_10359";
@@ -28,21 +37,28 @@ public class fulljira {
     private static final String ID_DISTRITO        = "customfield_10357";
     private static final String ID_DIRECCION       = "customfield_10358";
     private static final String ID_AREA            = "customfield_10504";
+
+    // Contacto
     private static final String ID_NOMBRE_CONTACTO = "customfield_10090";
     private static final String ID_NUMERO_CONTACTO = "customfield_10091";
+
+    // Clasificación Técnica
     private static final String ID_ITEM            = "customfield_10249";
-    private static final String ID_DESCRIP_INCID   = "customfield_10180";
-    
-    // LAS 2 FECHAS DE GENERACIÓN Y 2 DE SOLUCIÓN
-    private static final String ID_FECHA_GEN_MANUAL = "customfield_10321"; // Fecha manual reporte
-    private static final String ID_FECHA_SOL_MANUAL = "customfield_10322"; // Fecha manual solución
-    
-    private static final String ID_DESCRIP_SOLUC   = "customfield_10089";
-    private static final String ID_TIEMPO_SOLUCION = "customfield_10177";
-    private static final String ID_DISPONIBILIDAD  = "customfield_10178";
+    private static final String ID_CAT_SERVICIO    = "customfield_10394";
     private static final String ID_MEDIO_TX        = "customfield_10361";
     private static final String ID_CANAL_COMUNIC   = "customfield_10286";
-    private static final String ID_CAT_SERVICIO    = "customfield_10394";
+    
+    // Fechas Manuales y Métricas
+    private static final String ID_FECHA_GEN_MANUAL = "customfield_10321";
+    private static final String ID_FECHA_SOL_MANUAL = "customfield_10322";
+    private static final String ID_TIEMPO_SOLUCION  = "customfield_10177";
+    private static final String ID_DISPONIBILIDAD   = "customfield_10178";
+    
+    // Descripciones Largas (Rich Text)
+    private static final String ID_DESCRIP_INCID    = "customfield_10180";
+    private static final String ID_DESCRIP_SOLUC    = "customfield_10089";
+
+    private static final String JQL_QUERY = "project = 'MSP' ORDER BY created DESC";
 
     public static void main(String[] args) {
         Dotenv dotenv = Dotenv.load();
@@ -52,52 +68,82 @@ public class fulljira {
         ObjectMapper mapper = new ObjectMapper();
         HttpClient client = HttpClient.newBuilder().build();
         
-        // USO DE SXSSF: Mantiene solo 100 filas en memoria RAM, el resto va al disco duro temporalmente
         SXSSFWorkbook workbook = new SXSSFWorkbook(100); 
-        Sheet sheet = workbook.createSheet("Reporte Total Minedu");
+        Sheet sheet = workbook.createSheet("Reporte Maestro Jira");
 
-        // ENCABEZADOS EXTENDIDOS
+        // --- ENCABEZADOS DE METADATA (FILAS 0 y 1) ---
+        LocalDateTime ahora = LocalDateTime.now();
+        CellStyle metaStyle = workbook.createCellStyle();
+        Font metaFont = workbook.createFont(); metaFont.setBold(true); metaFont.setColor(IndexedColors.DARK_BLUE.getIndex());
+        metaStyle.setFont(metaFont);
+
+        Row r0 = sheet.createRow(0);
+        r0.createCell(0).setCellValue("FECHA EXTRACCIÓN:");
+        r0.createCell(1).setCellValue(ahora.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        r0.getCell(0).setCellStyle(metaStyle);
+
+        Row r1 = sheet.createRow(1);
+        r1.createCell(0).setCellValue("JQL UTILIZADO:");
+        r1.createCell(1).setCellValue(JQL_QUERY);
+        r1.getCell(0).setCellStyle(metaStyle);
+
+        // --- ENCABEZADOS DE TABLA (FILA 3) ---
+        // 32 COLUMNAS TOTALES
         String[] headers = {
-            "Clave Ticket", "Estado", "Categoría Servicio", "Canal Comunicación", "Ítem", 
-            "Cód. Local", "Cód. Modular", "Nombre IE", "Departamento", "Provincia", "Distrito", "Dirección", "Área",
-            "Contacto", "Celular", "Descripción Incidente", 
-            "F. Generación (SISTEMA)", "F. Generación (REPORTE)", 
-            "F. Solución (SISTEMA)", "F. Solución (REPORTE)", 
-            "Descripción Solución", "Tiempo Solución", "Tiempo No Disponibilidad", "Medio Transmisión"
+            "CLAVE", "RESUMEN (SUMMARY)", "ESTADO", "PRIORIDAD", "TIPO TICKET", 
+            "REPORTADOR", "ASIGNADO", "ORGANIZACIÓN", "F. 1RA RESPUESTA",
+            "CATEGORÍA SERVICIO", "CANAL", "MEDIO TX", "ÍTEM",
+            "CÓD. LOCAL", "CÓD. MODULAR", "NOMBRE IE", 
+            "DEPARTAMENTO", "PROVINCIA", "DISTRITO", "DIRECCIÓN", "ÁREA",
+            "CONTACTO", "CELULAR",
+            "F. CREACIÓN (SIS)", "F. GEN. MANUAL (REP)", 
+            "F. RESOLUCIÓN (SIS)", "F. SOL. MANUAL (REP)",
+            "TIEMPO SOLUCIÓN", "TIEMPO INDISPONIBILIDAD",
+            "DESCRIPCIÓN INCIDENTE", "DESCRIPCIÓN SOLUCIÓN"
         };
 
-        Row headerRow = sheet.createRow(0);
+        Row headerRow = sheet.createRow(3);
         CellStyle headerStyle = workbook.createCellStyle();
-        Font font = workbook.createFont(); font.setBold(true);
+        Font font = workbook.createFont(); font.setBold(true); font.setColor(IndexedColors.WHITE.getIndex());
         headerStyle.setFont(font);
+        headerStyle.setFillForegroundColor(IndexedColors.ROYAL_BLUE.getIndex());
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
             cell.setCellValue(headers[i]);
             cell.setCellStyle(headerStyle);
+            sheet.setColumnWidth(i, (i == 1) ? 12000 : 4500); // Resumen más ancho
         }
 
-        int rowIdx = 1;
+        sheet.createFreezePane(0, 4); 
+        sheet.setAutoFilter(new CellRangeAddress(3, 3, 0, headers.length - 1));
+
+        int rowIdx = 4;
         String nextPageToken = null;
         boolean hasMore = true;
 
-        System.out.println("🚀 Iniciando descarga masiva de Jira...");
+        System.out.println("🚀 INICIANDO EXTRACCIÓN TOTAL (INCLUYENDO SUMMARY)...");
 
         try {
             while (hasMore) {
                 ObjectNode payload = mapper.createObjectNode();
-                payload.put("jql", "project = 'MSP' ORDER BY created DESC");
+                payload.put("jql", JQL_QUERY);
                 payload.put("maxResults", 50);
                 if (nextPageToken != null) payload.put("nextPageToken", nextPageToken);
                 
                 ArrayNode fields = payload.putArray("fields");
-                fields.add("status").add("created").add("resolutiondate")
+                // CAMPOS ESTÁNDAR + CUSTOM
+                fields.add("key").add("summary").add("status").add("priority").add("issuetype")
+                      .add("reporter").add("assignee").add("created").add("resolutiondate")
+                      .add(ID_ORGANIZACION).add(ID_PRIMERA_RESP)
+                      .add(ID_CAT_SERVICIO).add(ID_CANAL_COMUNIC).add(ID_MEDIO_TX).add(ID_ITEM)
                       .add(ID_COD_LOCAL).add(ID_COD_MODULAR).add(ID_NOMBRE_IE)
-                      .add(ID_DEPARTAMENTO).add(ID_PROVINCIA).add(ID_DISTRITO).add(ID_DIRECCION)
-                      .add(ID_AREA).add(ID_NOMBRE_CONTACTO).add(ID_NUMERO_CONTACTO).add(ID_ITEM)
-                      .add(ID_DESCRIP_INCID).add(ID_FECHA_GEN_MANUAL).add(ID_FECHA_SOL_MANUAL)
-                      .add(ID_DESCRIP_SOLUC).add(ID_TIEMPO_SOLUCION).add(ID_DISPONIBILIDAD)
-                      .add(ID_MEDIO_TX).add(ID_CANAL_COMUNIC).add(ID_CAT_SERVICIO);
+                      .add(ID_DEPARTAMENTO).add(ID_PROVINCIA).add(ID_DISTRITO).add(ID_DIRECCION).add(ID_AREA)
+                      .add(ID_NOMBRE_CONTACTO).add(ID_NUMERO_CONTACTO)
+                      .add(ID_FECHA_GEN_MANUAL).add(ID_FECHA_SOL_MANUAL)
+                      .add(ID_TIEMPO_SOLUCION).add(ID_DISPONIBILIDAD)
+                      .add(ID_DESCRIP_INCID).add(ID_DESCRIP_SOLUC);
 
                 HttpRequest request = HttpRequest.newBuilder()
                         .uri(URI.create(jiraUrl + "/rest/api/3/search/jql"))
@@ -106,104 +152,105 @@ public class fulljira {
                         .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(payload)))
                         .build();
 
-                // LÓGICA DE REINTENTOS PARA EVITAR 'CONNECTION RESET'
-                int maxRetries = 3;
-                int retryCount = 0;
-                boolean success = false;
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+                
+                if (response.statusCode() == 200) {
+                    JsonNode root = mapper.readTree(response.body());
+                    JsonNode issues = root.path("issues");
 
-                while (!success && retryCount < maxRetries) {
-                    try {
-                        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-                        
-                        if (response.statusCode() == 429) {
-                            System.out.println("⚠️ Jira pide frenar (HTTP 429). Esperando 5 segundos...");
-                            Thread.sleep(5000);
-                            retryCount++;
-                            continue;
-                        }
+                    for (JsonNode issue : issues) {
+                        JsonNode f = issue.path("fields");
+                        Row row = sheet.createRow(rowIdx++);
+                        int c = 0;
 
-                        JsonNode root = mapper.readTree(response.body());
-                        JsonNode issues = root.path("issues");
+                        // 1. GESTIÓN Y CABECERA
+                        createCell(row, c++, issue.path("key").asText());
+                        createCell(row, c++, f.path("summary").asText()); // <--- ¡AQUÍ ESTÁ EL SUMMARY!
+                        createCell(row, c++, f.path("status").path("name").asText());
+                        createCell(row, c++, f.path("priority").path("name").asText());
+                        createCell(row, c++, f.path("issuetype").path("name").asText());
+                        createCell(row, c++, f.path("reporter").path("displayName").asText());
+                        createCell(row, c++, f.path("assignee").path("displayName").asText());
+                        createCell(row, c++, obtenerOrganizacion(f.path(ID_ORGANIZACION)));
+                        createCell(row, c++, formatearFecha(f.path(ID_PRIMERA_RESP).asText()));
 
-                        for (JsonNode issue : issues) {
-                            JsonNode f = issue.path("fields");
-                            Row row = sheet.createRow(rowIdx++);
+                        // 2. CLASIFICACIÓN
+                        createCell(row, c++, obtenerValor(f.path(ID_CAT_SERVICIO)));
+                        createCell(row, c++, obtenerValor(f.path(ID_CANAL_COMUNIC)));
+                        createCell(row, c++, obtenerValor(f.path(ID_MEDIO_TX)));
+                        createCell(row, c++, obtenerValor(f.path(ID_ITEM)));
 
-                            row.createCell(0).setCellValue(issue.path("key").asText());
-                            row.createCell(1).setCellValue(f.path("status").path("name").asText());
-                            row.createCell(2).setCellValue(obtenerValor(f.path(ID_CAT_SERVICIO)));
-                            row.createCell(3).setCellValue(obtenerValor(f.path(ID_CANAL_COMUNIC)));
-                            row.createCell(4).setCellValue(obtenerValor(f.path(ID_ITEM)));
-                            row.createCell(5).setCellValue(obtenerValor(f.path(ID_COD_LOCAL)));
-                            row.createCell(6).setCellValue(obtenerValor(f.path(ID_COD_MODULAR)));
-                            row.createCell(7).setCellValue(obtenerValor(f.path(ID_NOMBRE_IE)));
-                            row.createCell(8).setCellValue(obtenerValor(f.path(ID_DEPARTAMENTO)));
-                            row.createCell(9).setCellValue(obtenerValor(f.path(ID_PROVINCIA)));
-                            row.createCell(10).setCellValue(obtenerValor(f.path(ID_DISTRITO)));
-                            row.createCell(11).setCellValue(obtenerValor(f.path(ID_DIRECCION)));
-                            row.createCell(12).setCellValue(obtenerValor(f.path(ID_AREA)));
-                            row.createCell(13).setCellValue(obtenerValor(f.path(ID_NOMBRE_CONTACTO)));
-                            row.createCell(14).setCellValue(obtenerValor(f.path(ID_NUMERO_CONTACTO)));
-                            row.createCell(15).setCellValue(parseADF(f.path(ID_DESCRIP_INCID)));
-                            
-                            // LAS 4 FECHAS
-                            row.createCell(16).setCellValue(formatearFecha(f.path("created").asText()));
-                            row.createCell(17).setCellValue(formatearFecha(f.path(ID_FECHA_GEN_MANUAL).asText()));
-                            row.createCell(18).setCellValue(formatearFecha(f.path("resolutiondate").asText()));
-                            row.createCell(19).setCellValue(formatearFecha(f.path(ID_FECHA_SOL_MANUAL).asText()));
-                            
-                            row.createCell(20).setCellValue(parseADF(f.path(ID_DESCRIP_SOLUC)));
-                            row.createCell(21).setCellValue(obtenerValor(f.path(ID_TIEMPO_SOLUCION)));
-                            row.createCell(22).setCellValue(obtenerValor(f.path(ID_DISPONIBILIDAD)));
-                            row.createCell(23).setCellValue(obtenerValor(f.path(ID_MEDIO_TX)));
-                        }
+                        // 3. UBICACIÓN / IE
+                        createCell(row, c++, obtenerValor(f.path(ID_COD_LOCAL)));
+                        createCell(row, c++, obtenerValor(f.path(ID_COD_MODULAR)));
+                        createCell(row, c++, obtenerValor(f.path(ID_NOMBRE_IE)));
+                        createCell(row, c++, obtenerValor(f.path(ID_DEPARTAMENTO)));
+                        createCell(row, c++, obtenerValor(f.path(ID_PROVINCIA)));
+                        createCell(row, c++, obtenerValor(f.path(ID_DISTRITO)));
+                        createCell(row, c++, obtenerValor(f.path(ID_DIRECCION)));
+                        createCell(row, c++, obtenerValor(f.path(ID_AREA)));
 
-                        nextPageToken = root.path("nextPageToken").asText(null);
-                        hasMore = nextPageToken != null && !issues.isEmpty();
-                        System.out.println(">>> Descargados " + (rowIdx - 1) + " registros...");
-                        
-                        success = true; // Éxito, salimos del bucle de reintentos
-                        
-                        // Pausa muy ligera para estabilizar las peticiones a la API
-                        Thread.sleep(100); 
+                        // 4. CONTACTO
+                        createCell(row, c++, obtenerValor(f.path(ID_NOMBRE_CONTACTO)));
+                        createCell(row, c++, obtenerValor(f.path(ID_NUMERO_CONTACTO)));
 
-                    } catch (Exception e) {
-                        retryCount++;
-                        System.out.println("⚠️ Error temporal de red (Intento " + retryCount + "): " + e.getMessage());
-                        if (retryCount >= maxRetries) {
-                            System.out.println("❌ Fallo definitivo en este bloque. Procediendo a guardar los " + (rowIdx - 1) + " registros obtenidos...");
-                            hasMore = false; // Cortamos para guardar lo que tenemos
-                        } else {
-                            Thread.sleep(3000 * retryCount); // Espera progresiva antes de reintentar
-                        }
+                        // 5. FECHAS COMPARATIVAS
+                        createCell(row, c++, formatearFecha(f.path("created").asText()));
+                        createCell(row, c++, formatearFecha(f.path(ID_FECHA_GEN_MANUAL).asText()));
+                        createCell(row, c++, formatearFecha(f.path("resolutiondate").asText()));
+                        createCell(row, c++, formatearFecha(f.path(ID_FECHA_SOL_MANUAL).asText()));
+
+                        // 6. TIEMPOS Y NARRATIVA
+                        createCell(row, c++, obtenerValor(f.path(ID_TIEMPO_SOLUCION)));
+                        createCell(row, c++, obtenerValor(f.path(ID_DISPONIBILIDAD)));
+                        createCell(row, c++, parseADF(f.path(ID_DESCRIP_INCID)));
+                        createCell(row, c++, parseADF(f.path(ID_DESCRIP_SOLUC)));
                     }
+
+                    nextPageToken = root.path("nextPageToken").asText(null);
+                    hasMore = nextPageToken != null && !issues.isEmpty();
+                    System.out.println(">> Procesados: " + (rowIdx - 4));
+                    Thread.sleep(100); 
+
+                } else {
+                    System.out.println("⚠️ Error " + response.statusCode() + ". Esperando 5s...");
+                    Thread.sleep(5000);
                 }
             }
 
-            // Nota: Con SXSSF autoSizeColumn consume muchísima memoria porque debe leer todo de nuevo.
-            // Para reportes masivos de miles de filas, es mejor omitirlo para que termine rápido.
-            // for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
-
-            String fileName = "Data_Maestra_Jira_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm")) + ".xlsx";
+            String fileName = "Reporte_Jira_FULL_SUMMARY_" + ahora.format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm")) + ".xlsx";
             try (FileOutputStream out = new FileOutputStream(fileName)) {
                 workbook.write(out);
             }
-            
-            // Limpia los archivos temporales creados por SXSSFWorkbook en el disco duro
-            workbook.dispose(); 
-            
-            System.out.println("✅ ¡REPORTE TOTAL COMPLETADO CON ÉXITO!: " + fileName);
+            workbook.dispose();
+            System.out.println("✅ REPORTE GENERADO: " + fileName);
 
         } catch (Exception e) {
-            System.out.println("❌ Ocurrió un error inesperado al generar el archivo Excel:");
             e.printStackTrace();
         }
+    }
+
+    // --- UTILIDADES ---
+    private static void createCell(Row row, int col, String val) {
+        Cell c = row.createCell(col);
+        c.setCellValue((val == null || val.equalsIgnoreCase("null")) ? "" : val);
     }
 
     private static String obtenerValor(JsonNode node) {
         if (node.isMissingNode() || node.isNull()) return "";
         if (node.has("value")) return node.get("value").asText();
+        if (node.has("name")) return node.get("name").asText();
         return node.asText();
+    }
+
+    private static String obtenerOrganizacion(JsonNode node) {
+        if (node.isArray() && node.size() > 0) return node.get(0).path("name").asText();
+        return "";
+    }
+
+    private static String formatearFecha(String dateStr) {
+        if (dateStr == null || dateStr.length() < 16) return "";
+        try { return dateStr.substring(0, 16).replace("T", " "); } catch(Exception e) { return dateStr; }
     }
 
     private static String parseADF(JsonNode node) {
@@ -212,23 +259,13 @@ public class fulljira {
         try {
             JsonNode content = node.path("content");
             for (JsonNode block : content) {
-                JsonNode innerContent = block.path("content");
-                if (innerContent.isArray()) {
-                    for (JsonNode item : innerContent) {
-                        if (item.has("text")) sb.append(item.get("text").asText());
-                        if ("hardBreak".equals(item.path("type").asText())) sb.append(" ");
-                    }
+                String type = block.path("type").asText();
+                if ("paragraph".equals(type)) {
+                    for (JsonNode t : block.path("content")) if (t.has("text")) sb.append(t.get("text").asText());
+                    sb.append("\n");
                 }
-                sb.append(" | "); 
             }
         } catch (Exception e) { return ""; }
         return sb.toString().trim();
-    }
-
-    private static String formatearFecha(String dateStr) {
-        if (dateStr == null || dateStr.isEmpty() || dateStr.equalsIgnoreCase("null")) return "";
-        try {
-            return dateStr.substring(0, 16).replace("T", " ");
-        } catch (Exception e) { return dateStr; }
     }
 }

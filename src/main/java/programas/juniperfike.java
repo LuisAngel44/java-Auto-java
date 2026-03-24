@@ -1,4 +1,3 @@
-
 package programas;
 
 import org.apache.poi.ss.usermodel.*;
@@ -13,36 +12,34 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.time.LocalDate;
+import java.time.LocalDateTime; // CAMBIO: Usar LocalDateTime en lugar de LocalDate
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 public class juniperfike {
-	public static void main(String[] args) {
-        // Archivo que el programa va a leer
+    public static void main(String[] args) {
         String rutaExcelEntrada = "datos_tickets.xlsx";
-        // Nuevo archivo que el programa va a crear con las rutas
         String rutaExcelSalida = "reporte_evidencias.xlsx"; 
         String carpetaSalida = "evidencias_minedu";
 
         new File(carpetaSalida).mkdirs();
         Random random = new Random();
-        DateTimeFormatter formatterSalida = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        
+        // CAMBIO: El formateador de salida ahora incluye horas, minutos y segundos
+        DateTimeFormatter formatterSalida = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
-        // 1. Preparar el NUEVO Excel de Salida
         Workbook workbookSalida = new XSSFWorkbook();
         Sheet sheetSalida = workbookSalida.createSheet("Tickets Procesados");
 
-        // Crear los encabezados de la Fila 1 en el nuevo Excel
         Row filaEncabezado = sheetSalida.createRow(0);
         filaEncabezado.createCell(0).setCellValue("CID");
         filaEncabezado.createCell(1).setCellValue("Fecha Inicial");
         filaEncabezado.createCell(2).setCellValue("Fecha Final");
-        filaEncabezado.createCell(3).setCellValue("Ruta de Imagen"); // La nueva columna
+        filaEncabezado.createCell(3).setCellValue("Ruta de Imagen");
 
-        int filaSalidaIndex = 1; // Para ir escribiendo desde la Fila 2 en adelante
+        int filaSalidaIndex = 1;
 
         try (FileInputStream fis = new FileInputStream(new File(rutaExcelEntrada));
              Workbook workbookEntrada = new XSSFWorkbook(fis)) {
@@ -52,7 +49,6 @@ public class juniperfike {
 
             System.out.println("Iniciando generación de imágenes y reporte Excel...\n");
 
-            // Recorrer tu Excel original
             for (Row row : sheetEntrada) {
                 if (row.getRowNum() == 0) continue;
 
@@ -65,60 +61,60 @@ public class juniperfike {
                     if (codigoCL.isEmpty()) continue;
 
                     try {
-                        LocalDate fechaActual = obtenerFechaReal(celdaFechaInicio);
-                        LocalDate fechaFin = obtenerFechaReal(celdaFechaFin);
+                        // CAMBIO: Ahora obtenemos fechas con su hora exacta
+                        LocalDateTime fechaInicio = obtenerFechaReal(celdaFechaInicio);
+                        LocalDateTime fechaFin = obtenerFechaReal(celdaFechaFin);
 
-                        if (fechaActual == null || fechaFin == null) continue;
+                        if (fechaInicio == null || fechaFin == null) {
+                            System.out.println("Fecha inválida en fila " + (row.getRowNum() + 1));
+                            continue;
+                        }
 
-                        String fechaInicioTexto = fechaActual.format(formatterSalida);
-                        String fechaFinTexto = fechaFin.format(formatterSalida); // Guardamos para el reporte
-
-                        int minutoPrimerLog = random.nextInt(50) + 10;
-                        String horaPrimerLog = "07:" + minutoPrimerLog;
+                        String fechaInicioTexto = fechaInicio.format(formatterSalida);
+                        String fechaFinTexto = fechaFin.format(formatterSalida);
 
                         List<String> lineasConsola = new ArrayList<>();
                         lineasConsola.add("juniper@MINEDU5K2_" + codigoCL + "_SRX300> show log chassisid | match \"power sequencer started\"");
 
-                        boolean esPrimeraVuelta = true;
+                        // CAMBIO: Iniciamos en la hora exacta del Excel
+                        LocalDateTime tiempoActual = fechaInicio;
 
-                        while (!fechaActual.isAfter(fechaFin)) {
-                            String horaSimulada;
+                        // Bucle de tiempo
+                        while (!tiempoActual.isAfter(fechaFin)) {
+                            // Imprimimos la línea con el tiempo actual exacto
+                            lineasConsola.add(tiempoActual.format(formatterSalida) + " .. power sequencer started ..");
 
-                            if (esPrimeraVuelta) {
-                                horaSimulada = horaPrimerLog;
-                                esPrimeraVuelta = false;
-                            } else {
-                                int minutoAleatorio = random.nextInt(50) + 10;
-                                horaSimulada = "07:" + minutoAleatorio;
+                            if (tiempoActual.isEqual(fechaFin)) break;
+                            
+                            // CAMBIO: En vez de saltar días, saltamos minutos (ej. entre 15 y 45 minutos)
+                            // Puedes ajustar este salto a tu gusto
+                            int minutosSalto = random.nextInt(30) + 15;
+                            tiempoActual = tiempoActual.plusMinutes(minutosSalto);
+
+                            // Si al sumar minutos nos pasamos de la fecha/hora final, nos ajustamos exactamente al final
+                            if (tiempoActual.isAfter(fechaFin)) {
+                                tiempoActual = fechaFin;
                             }
-
-                            lineasConsola.add(fechaActual.format(formatterSalida) + " " + horaSimulada + " .. power sequencer started ..");
-
-                            if (fechaActual.isEqual(fechaFin)) break;
-                            int diasSalto = random.nextInt(3) + 1;
-                            fechaActual = fechaActual.plusDays(diasSalto);
-                            if (fechaActual.isAfter(fechaFin)) fechaActual = fechaFin;
                         }
 
-                        // 2. Generar la imagen y recuperar su ruta en la PC
-                        String rutaImagenGenerada = crearImagenConsola(lineasConsola, codigoCL, fechaInicioTexto, horaPrimerLog, carpetaSalida);
+                        // Generar la imagen
+                        String rutaImagenGenerada = crearImagenConsola(lineasConsola, codigoCL, fechaInicio, carpetaSalida);
 
-                        // 3. Escribir los datos procesados en el NUEVO Excel
+                        // Escribir los datos procesados en el NUEVO Excel
                         if (rutaImagenGenerada != null) {
                             Row nuevaFila = sheetSalida.createRow(filaSalidaIndex++);
                             nuevaFila.createCell(0).setCellValue(codigoCL);
                             nuevaFila.createCell(1).setCellValue(fechaInicioTexto);
                             nuevaFila.createCell(2).setCellValue(fechaFinTexto);
-                            nuevaFila.createCell(3).setCellValue(rutaImagenGenerada); // Aquí inyectamos la dirección
+                            nuevaFila.createCell(3).setCellValue(rutaImagenGenerada);
                         }
 
                     } catch (Exception e) {
-                        System.out.println("Error procesando fila " + (row.getRowNum() + 1));
+                        System.out.println("Error procesando fila " + (row.getRowNum() + 1) + ": " + e.getMessage());
                     }
                 }
             }
 
-            // 4. Guardar físicamente el nuevo archivo Excel en tu disco duro
             try (FileOutputStream fos = new FileOutputStream(new File(rutaExcelSalida))) {
                 workbookSalida.write(fos);
                 System.out.println("\n¡Reporte Excel creado exitosamente: " + rutaExcelSalida + "!");
@@ -133,9 +129,9 @@ public class juniperfike {
     }
 
     /**
-     * Ahora este método devuelve un String con la ruta absoluta donde se guardó la imagen.
+     * CAMBIO: He simplificado los parámetros para recibir directamente el LocalDateTime
      */
-    private static String crearImagenConsola(List<String> lineas, String codigoCL, String fechaInicio, String horaInicio, String carpetaSalida) {
+    private static String crearImagenConsola(List<String> lineas, String codigoCL, LocalDateTime fechaInicio, String carpetaSalida) {
         try {
             int fontSize = 16;
             Font font = new Font("Monospaced", Font.PLAIN, fontSize);
@@ -161,16 +157,14 @@ public class juniperfike {
             }
             g2d.dispose();
 
-            String fechaArchivo = fechaInicio.replace("/", "-");
-            String horaArchivo = horaInicio.replace(":", "-");
-
-            String nombreArchivo = codigoCL + "_" + fechaArchivo + "_" + horaArchivo + ".png";
+            // CAMBIO: Formato seguro para nombres de archivos (sin dos puntos ':')
+            DateTimeFormatter formatterArchivo = DateTimeFormatter.ofPattern("dd-MM-yyyy_HH-mm-ss");
+            String nombreArchivo = codigoCL + "_" + fechaInicio.format(formatterArchivo) + ".png";
             File archivoSalida = new File(carpetaSalida, nombreArchivo);
 
             ImageIO.write(imagen, "png", archivoSalida);
             System.out.println("Imagen creada exitosamente: " + nombreArchivo);
 
-            // Devolvemos la ruta completa (ej. C:\Users\...\evidencias_minedu\110651_03-11-2025_07-34.png)
             return archivoSalida.getAbsolutePath(); 
 
         } catch (Exception e) {
@@ -179,15 +173,30 @@ public class juniperfike {
         }
     }
 
-    private static LocalDate obtenerFechaReal(Cell celda) {
+    /**
+     * CAMBIO: Ahora usa LocalDateTime y soporta el formato de tu Excel ("yyyy-MM-dd HH:mm:ss")
+     */
+    private static LocalDateTime obtenerFechaReal(Cell celda) {
         if (celda == null) return null;
         if (celda.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(celda)) {
-            return celda.getLocalDateTimeCellValue().toLocalDate();
+            return celda.getLocalDateTimeCellValue(); // Mantiene la hora
         } else {
             DataFormatter formatter = new DataFormatter();
             String texto = formatter.formatCellValue(celda).trim();
             if (texto.isEmpty()) return null;
-            return LocalDate.parse(texto, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            
+            try {
+                // Intenta parsear el formato específico de tu ejemplo
+                return LocalDateTime.parse(texto, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            } catch (Exception e) {
+                try {
+                    // Formato alternativo por si alguna celda lo tiene diferente
+                    return LocalDateTime.parse(texto, DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+                } catch (Exception ex) {
+                    System.out.println("No se pudo parsear la fecha: " + texto);
+                    return null;
+                }
+            }
         }
     }
 }

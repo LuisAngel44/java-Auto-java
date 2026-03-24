@@ -17,6 +17,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -132,7 +134,16 @@ public class TTT {
                 Thread.sleep(600); 
             }
 
-            try (FileOutputStream fileOut = new FileOutputStream("resultado_carga_final.xlsx")) {
+            
+            LocalDateTime ahora = LocalDateTime.now();
+
+            // Formato solo con números: yyyyMMddHHmmss
+            DateTimeFormatter formato = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+            // Convertir a String
+            String fechaNumerica = ahora.format(formato);
+            
+            try (FileOutputStream fileOut = new FileOutputStream("resultado_carga_final"+fechaNumerica+".xlsx")) {
                 workbook.write(fileOut);
                 System.out.println("\n🏁 FINALIZADO. Procesados: " + exitosos);
             }
