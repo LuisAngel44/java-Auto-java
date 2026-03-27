@@ -143,10 +143,14 @@ public class JuniperRealNoFake {
             
             // Intentos de parseo manual
             String[] formatos = {
-                "yyyy-MM-dd HH:mm:ss", 
-                "dd/MM/yyyy HH:mm:ss", 
-                "d/M/yyyy H:mm:ss", 
-                "dd-MM-yyyy HH:mm:ss"
+            		"yyyy-MM-dd HH:mm:ss", 
+                    "dd/MM/yyyy HH:mm:ss", 
+                    "d/M/yyyy H:mm:ss", 
+                    "dd-MM-yyyy HH:mm:ss",
+                    "dd/MM/yyyy HH:mm",  // <-- Añadido: Formato exacto de tu Excel
+                    "d/M/yyyy H:mm",     // <-- Añadido
+                    "yyyy-MM-dd HH:mm",  // <-- Añadido
+                    "dd-MM-yyyy HH:mm"   // <-- Añadido
             };
 
             for (String f : formatos) {

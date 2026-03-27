@@ -16,10 +16,10 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
-public class TransitionManager {
+public class TransitionManagerCerradoAResuelto {
 
     // ========= CONFIGURACIÓN =========
-    static final String EXCEL_FILE = "cambio_estados.xlsx"; 
+    static final String EXCEL_FILE = "cambio_estados_verse.xlsx"; 
     static final int COL_TICKET = 0;
     static final int COL_ESTADO_FINAL = 1;
 
@@ -27,11 +27,6 @@ public class TransitionManager {
     static String encodedAuth;
     static HttpClient client;
     static ObjectMapper mapper;
-
-    // Constantes de Regex para los estados
-    static final String REGEX_ESPERANDO = "(?i).*esperando.*ayuda.*";
-    static final String REGEX_RESUELTA = "(?i).*(resuelt[oa]|resolver).*";
-    static final String REGEX_CERRADO = "(?i).*cerrad[oa].*";
 
     public static void main(String[] args) {
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
@@ -48,7 +43,7 @@ public class TransitionManager {
         client = HttpClient.newHttpClient();
         mapper = new ObjectMapper();
 
-        System.out.println(">>> 🚀 INICIANDO CAMBIO DE ESTADOS NOC (Flujo Multiestado) <<<");
+        System.out.println(">>> 🚀 INICIANDO CAMBIO DE ESTADOS NOC (De Cerrado a Resuelto) <<<");
 
         try (FileInputStream fis = new FileInputStream(new File(EXCEL_FILE));
              Workbook workbook = new XSSFWorkbook(fis)) {
@@ -80,45 +75,16 @@ public class TransitionManager {
     private static void procesarFlujo(String issueKey, String target) {
         try {
             String currentStatus = getStatus(issueKey);
-            System.out.println("   📌 Estado actual: [" + currentStatus + "] | Objetivo Excel: [" + target + "]");
+            System.out.println("   📌 Estado actual: [" + currentStatus + "] | Objetivo: [" + target + "]");
 
-            boolean isCurrentEsperando = currentStatus.matches(REGEX_ESPERANDO);
-            boolean isCurrentResuelto = currentStatus.matches(REGEX_RESUELTA);
-            boolean isCurrentCerrado = currentStatus.matches(REGEX_CERRADO);
-            
-            boolean isTargetResuelto = target.matches(REGEX_RESUELTA);
-            boolean isTargetCerrado = target.matches(REGEX_CERRADO);
+            // --- CAMBIO AQUI: Validamos que el actual sea Cerrado/Cerrada y el objetivo Resuelto/Resuelta ---
+            boolean isCurrentCerrado = currentStatus.matches("(?i).*cerrad[oa].*");
+            boolean isTargetResuelto = target.matches("(?i).*resuelt[oa].*");
 
-            // Validar si ya está en la meta
-            if (isCurrentCerrado && isTargetCerrado) {
-                System.out.println("   ✅ El ticket ya se encuentra CERRADO. No se requiere acción.");
-                return;
-            }
-            if (isCurrentResuelto && isTargetResuelto) {
-                System.out.println("   ✅ El ticket ya se encuentra RESUELTO. No se requiere acción.");
-                return;
-            }
-
-            // Lógica de transición según el objetivo
-            if (isTargetResuelto && isCurrentEsperando) {
-                ejecutarTransicion(issueKey, REGEX_RESUELTA, true);
-                
-            } else if (isTargetCerrado) {
-                // Si la meta es CERRADO, evaluamos de dónde viene
-                if (isCurrentEsperando) {
-                    System.out.println("   🔄 El ticket está en 'Esperando'. Pasando primero por 'Resuelta'...");
-                    boolean pasoAResuelta = ejecutarTransicion(issueKey, REGEX_RESUELTA, true);
-                    if (pasoAResuelta) {
-                        ejecutarTransicion(issueKey, REGEX_CERRADO, false);
-                    }
-                } else if (isCurrentResuelto) {
-                    System.out.println("   🔄 El ticket está 'Resuelto'. Pasando directamente a 'Cerrado'...");
-                    ejecutarTransicion(issueKey, REGEX_CERRADO, false);
-                } else {
-                    System.out.println("   ⏭️ El estado actual [" + currentStatus + "] no coincide con el flujo esperado para cerrar.");
-                }
+            if (isCurrentCerrado && isTargetResuelto) {
+                ejecutarTransicion(issueKey);
             } else {
-                System.out.println("   ⏭️ El estado objetivo [" + target + "] no está contemplado en la automatización.");
+                System.out.println("   ⏭️ Ignorado: El estado actual no es 'Cerrado' o el Excel no dice 'RESUELTA'.");
             }
 
         } catch (Exception e) {
@@ -137,32 +103,28 @@ public class TransitionManager {
         return root.path("fields").path("status").path("name").asText();
     }
 
-    // Modificado para aceptar la regex de destino y si requiere resolución
-    private static boolean ejecutarTransicion(String issueKey, String regexDestino, boolean requiereResolucion) throws Exception {
-        JsonNode transitionNode = findTransition(issueKey, regexDestino);
+    private static void ejecutarTransicion(String issueKey) throws Exception {
+        JsonNode transitionNode = findTransition(issueKey);
         
         if (transitionNode == null) {
-            System.err.println("   ❌ Jira no permite esta transición desde el estado actual. (Botón no habilitado)");
-            return false;
+            System.err.println("   ❌ Jira no permite pasar a 'Resuelta' desde este estado (La transición no existe o no está permitida en tu Workflow).");
+            return;
         }
 
         String transitionId = transitionNode.path("id").asText();
-        String transitionName = transitionNode.path("name").asText();
         ObjectNode payload = mapper.createObjectNode();
         payload.putObject("transition").put("id", transitionId);
         
-        // Solo inyectamos "Resolution" si el paso lo requiere (Generalmente al pasar a Resuelto, pero no a Cerrado)
-        if (requiereResolucion) {
-            JsonNode resolutionField = transitionNode.path("fields").path("resolution");
-            if (!resolutionField.isMissingNode()) {
-                JsonNode allowedValues = resolutionField.path("allowedValues");
-                if (allowedValues.isArray() && allowedValues.size() > 0) {
-                    String resId = allowedValues.get(0).path("id").asText();
-                    payload.putObject("fields").putObject("resolution").put("id", resId);
-                    System.out.println("   ⚙️ Resolución detectada automáticamente (ID: " + resId + ")");
-                } else {
-                    payload.putObject("fields").putObject("resolution").put("name", "Resuelto");
-                }
+        // Mantenemos la lógica de resolución, ya que al pasar a "Resuelto" Jira suele pedirla.
+        JsonNode resolutionField = transitionNode.path("fields").path("resolution");
+        if (!resolutionField.isMissingNode()) {
+            JsonNode allowedValues = resolutionField.path("allowedValues");
+            if (allowedValues.isArray() && allowedValues.size() > 0) {
+                String resId = allowedValues.get(0).path("id").asText();
+                payload.putObject("fields").putObject("resolution").put("id", resId);
+                System.out.println("   ⚙️ Resolución detectada automáticamente (ID: " + resId + ")");
+            } else {
+                payload.putObject("fields").putObject("resolution").put("name", "Resuelto");
             }
         }
 
@@ -176,17 +138,14 @@ public class TransitionManager {
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         
         if (response.statusCode() == 204) {
-            System.out.println("   ✅ Movido exitosamente a '" + transitionName + "'!");
-            return true;
+            System.out.println("   ✅ Movido exitosamente a 'Resuelta'!");
         } else {
             System.err.println("   ⚠️ JIRA RECHAZÓ EL CAMBIO (Error " + response.statusCode() + ").");
             System.err.println("   Detalle: " + response.body());
-            return false;
         }
     }
 
-    // Modificado para recibir un patrón Regex de búsqueda
-    private static JsonNode findTransition(String issueKey, String regexDestino) throws Exception {
+    private static JsonNode findTransition(String issueKey) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(jiraUrl + "/rest/api/2/issue/" + issueKey + "/transitions?expand=transitions.fields"))
             .header("Authorization", "Basic " + encodedAuth)
@@ -199,9 +158,9 @@ public class TransitionManager {
             String toStatusName = t.path("to").path("name").asText();
             String transitionName = t.path("name").asText();
             
-            // Busca coincidencias tanto en el nombre de la transición como en el estado de destino
-            if (toStatusName.matches(regexDestino) || transitionName.matches(regexDestino)) {
-                return t;
+            // Buscamos transiciones que lleven a "Resuelto/a" o se llamen "Resolver"
+            if (toStatusName.matches("(?i).*resuelt[oa].*") || transitionName.matches("(?i).*(resuelt[oa]|resolver).*")) {
+                return t; 
             }
         }
         return null;
